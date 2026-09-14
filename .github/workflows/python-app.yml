@@ -4,6 +4,8 @@ on:
   schedule:
     # 平日 22:30 UTC = 日本時間 翌7:30 (米国市場クローズ後)。必要に応じて調整
     - cron: "30 22 * * 1-5"
+  repository_dispatch:
+    types: [run-screener]
   workflow_dispatch: {}  # 手動実行用ボタン
 
 permissions:
