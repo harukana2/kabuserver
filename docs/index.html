@@ -98,8 +98,14 @@
   .notes{margin-top:12px;}
   .note-line{margin-bottom:6px; font-size:13px;}
   .note-line .lbl{
-    display:inline-block; min-width:76px; color:var(--muted); font-weight:600; font-size:12px;
+    display:block;
+    min-width:76px; font-weight:700; font-size:12px;
+    margin-bottom:2px;
   }
+  .lbl.situation{ color:#1a73e8; }   /* 現状: 青 */
+  .lbl.outlook{ color:#c5221f; }     /* 見立て: 赤 */
+  .lbl.timing{ color:#188038; }      /* タイミング: 緑 */
+  
   .earnings{
     margin-top:10px; font-size:12px; color:var(--muted);
   }
