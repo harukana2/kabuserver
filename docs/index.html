@@ -215,9 +215,9 @@ function cardDayTrade(r){
       <span class="chip"><span class="lbl">RSI14</span>${fmtNum(r.rsi14)}</span>
     </div>
     <div class="notes">
-      <div class="note-line"><span class="lbl">現状</span>${r.day_situation||"—"}</div>
-      <div class="note-line"><span class="lbl">見立て</span>${r.day_outlook||"—"}</div>
-      <div class="note-line"><span class="lbl">タイミング</span>${r.day_timing||"—"}</div>
+      <div class="note-line"><span class="lbl">現状</span><br>${r.day_situation||"—"}</div>
+      <div class="note-line"><span class="lbl">見立て</span><br>${r.day_outlook||"—"}</div>
+      <div class="note-line"><span class="lbl">タイミング</span><br>${r.day_timing||"—"}</div>
     </div>
     <div class="earnings">次回決算: ${r.next_earnings||"不明"}</div>
   </div>`;
