@@ -4,12 +4,14 @@ on:
   schedule:
     # 平日 22:30 UTC = 日本時間 翌7:30 (米国市場クローズ後)。必要に応じて調整
     - cron: "30 22 * * 1-5"
-  repository_dispatch:
-    types: [run-screener]
   workflow_dispatch: {}  # 手動実行用ボタン
 
 permissions:
   contents: write  # data/ フォルダへのコミットに必要
+
+concurrency:
+  group: stock-scan
+  cancel-in-progress: false  # 実行中に次のスキャンが始まらないようにする
 
 jobs:
   scan:
@@ -38,5 +40,15 @@ jobs:
           git config user.name "stock-scanner-bot"
           git config user.email "actions@users.noreply.github.com"
           git add data/
-          git diff --cached --quiet || git commit -m "chore: update scan data ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
-          git push
+          git diff --cached --quiet && exit 0
+
+          git commit -m "chore: update scan data ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+
+          # pushの直前にリモートの最新を取り込む(他の実行やREADME更新等との
+          # 衝突で 'fetch first' で弾かれるのを防ぐ)。data/はスクリプトが
+          # 追記するだけのファイル群なのでrebaseでの衝突は基本発生しない想定。
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin main && break
+            echo "[warn] push失敗。リトライします ($i/5)"
+            sleep $((RANDOM % 10 + 5))
+          done
