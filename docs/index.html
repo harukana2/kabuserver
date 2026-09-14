@@ -231,9 +231,9 @@ function cardDayTrade(r){
       <span class="chip"><span class="lbl">RSI14</span>${fmtNum(r.rsi14)}</span>
     </div>
     <div class="notes">
-      <div class="note-line"><span class="lbl situation">現状</span>${r.day_situation||"—"}</div>
-      <div class="note-line"><span class="lbl outlook">見立て</span>${r.day_outlook||"—"}</div>
-      <div class="note-line"><span class="lbl timing">タイミング</span>${r.day_timing||"—"}</div>
+      <div class="note-line"><span class="lbl situation">現状</span><br>${r.day_situation||"—"}</div>
+      <div class="note-line"><span class="lbl outlook">見立て</span><br>${r.day_outlook||"—"}</div>
+      <div class="note-line"><span class="lbl timing">タイミング</span><br>${r.day_timing||"—"}</div>
     </div>
     <div class="earnings">次回決算: ${r.next_earnings||"不明"}</div>
   </div>`;
@@ -262,9 +262,9 @@ function cardLongTerm(r, showScore){
       <span class="chip"><span class="lbl">セクター</span>${r.sector||"—"}</span>
     </div>
     <div class="notes">
-      <div class="note-line"><span class="lbl situation">現状</span>${r.long_situation||"—"}</div>
-      <div class="note-line"><span class="lbl outlook">見立て</span>${r.long_outlook||"—"}</div>
-      <div class="note-line"><span class="lbl timing">タイミング</span>${r.long_timing||"—"}</div>
+      <div class="note-line"><span class="lbl situation">現状</span><br>${r.long_situation||"—"}</div>
+      <div class="note-line"><span class="lbl outlook">見立て</span><br>${r.long_outlook||"—"}</div>
+      <div class="note-line"><span class="lbl timing">タイミング</span><br>${r.long_timing||"—"}</div>
     </div>
     <div class="earnings">次回決算: ${r.next_earnings||"不明"}</div>
   </div>`;
