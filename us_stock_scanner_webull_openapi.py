@@ -82,10 +82,9 @@ from email.mime.text import MIMEText
 # --------------------------------------------------------------------------
 # Web viewer (GitHub Pages) 用のデータ出力先
 # --------------------------------------------------------------------------
-# このスクリプトと同じリポジトリ内に data/ フォルダを作り、実行のたびに
-# スナップショット(JSON)を追加していく。docs/index.html (閲覧用ページ)は
-# この data/ 配下のファイルを fetch して表示する。
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+# GitHub PagesはリポジトリのDocs/フォルダしか公開しないため、閲覧ページ
+# (docs/index.html)から見えるよう、データも docs/data/ 配下に保存する。
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "data")
 INDEX_JSON_PATH = os.path.join(DATA_DIR, "index.json")
 # 保持するスナップショット数の上限(リポジトリの肥大化防止。Noneで無制限)
 MAX_SNAPSHOTS_KEPT = 90
@@ -108,7 +107,8 @@ from webull.data.common.timespan import Timespan
 # --------------------------------------------------------------------------
 
 # 技術面ステージから、コストの高いファンダメンタルズ取得に進める候補数
-FUNDAMENTALS_STAGE_TOP_N = 40
+# デバッグ高速化用: 環境変数 SCAN_FUNDAMENTALS_TOP_N で上書き可能(空文字列は無視)
+FUNDAMENTALS_STAGE_TOP_N = int(os.environ.get("SCAN_FUNDAMENTALS_TOP_N") or 40)
 
 # メールに実際に載せる銘柄数
 DAY_TRADE_LIST_SIZE = 12
@@ -145,7 +145,11 @@ HISTORY_BAR_COUNT = 130
 
 # ユニバースの上限(None なら無制限=NYSE+NASDAQ+AMEX全銘柄)。
 # 初回テスト時はここを 300 などにして動作確認することを推奨。
+# デバッグ高速化用: 環境変数 SCAN_UNIVERSE_LIMIT が設定されていればそちらを優先
+# (例: SCAN_UNIVERSE_LIMIT=100 python us_stock_scanner_webull_openapi.py)
 UNIVERSE_LIMIT = None
+if os.environ.get("SCAN_UNIVERSE_LIMIT"):
+    UNIVERSE_LIMIT = int(os.environ["SCAN_UNIVERSE_LIMIT"])
 
 # NASDAQ Trader公式シンボルディレクトリ(公式データソース。HTMLスクレイピングではない)
 NASDAQ_LISTED_URL = "https://www.nasdaqtrader.com/dynamic/SymDirectory/nasdaqlisted.txt"
@@ -1029,7 +1033,12 @@ def run_scan():
     activity_top = tech_df.sort_values("activity_score", ascending=False).head(
         FUNDAMENTALS_STAGE_TOP_N
     )
-    sp500_rows = tech_df[tech_df["is_sp500"]] if sp500_set else tech_df.iloc[0:0]
+    # デバッグ高速化用: SCAN_SKIP_SP500=1 でS&P500全銘柄への無条件追加をスキップ
+    # (通常運用時はS&P500構成銘柄を「主要企業欄」用に必ず含めるため入れている)
+    skip_sp500 = os.environ.get("SCAN_SKIP_SP500", "").lower() in ("1", "true", "yes")
+    sp500_rows = (
+        tech_df[tech_df["is_sp500"]] if (sp500_set and not skip_sp500) else tech_df.iloc[0:0]
+    )
     shortlist = (
         pd.concat([activity_top, sp500_rows])
         .drop_duplicates(subset="symbol")
