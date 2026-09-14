@@ -53,6 +53,11 @@
     border-radius:8px;
   }
   select:focus, input:focus{outline:2px solid var(--accent); outline-offset:-1px;}
+  .dirbtn{
+    background:#fff; border:1px solid var(--line); color:var(--text);
+    padding:7px 12px; border-radius:8px; font-size:12.5px; cursor:pointer;
+  }
+  .dirbtn:hover{background:var(--chip-bg);}
   .tabs{
     display:flex; gap:4px; margin-top:14px; border-bottom:1px solid var(--line);
   }
@@ -98,13 +103,11 @@
   .notes{margin-top:12px;}
   .note-line{margin-bottom:6px; font-size:13px;}
   .note-line .lbl{
-    min-width:76px; font-weight:700; font-size:12px;
-    margin-bottom:2px;
+     min-width:76px; font-weight:700; font-size:12px; margin-bottom:2px;
   }
-  .lbl.situation{ color:#1a73e8; }   /* 現状: 青 */
-  .lbl.outlook{ color:#c5221f; }     /* 見立て: 赤 */
-  .lbl.timing{ color:#188038; }      /* タイミング: 緑 */
-  
+  .lbl.situation{ color:#1a73e8; }
+  .lbl.outlook{ color:#c5221f; }
+  .lbl.timing{ color:#188038; }
   .earnings{
     margin-top:10px; font-size:12px; color:var(--muted);
   }
@@ -133,6 +136,7 @@
   <div class="sortbar">
     並び替え:
     <select id="sortSelect"></select>
+    <button id="dirToggle" type="button" class="dirbtn">▼ 降順</button>
   </div>
 </header>
 
@@ -151,26 +155,33 @@ const DATA_DIR = "data"; // docs/data/ (index.htmlと同じdocsフォルダ内)
 
 const SORT_OPTIONS = {
   day_trade: [
-    {key:"day_opportunity", label:"利益期待スコア(高い順)", dir:"desc"},
-    {key:"day_risk", label:"リスクスコア(高い順)", dir:"desc"},
-    {key:"day_change_pct", label:"前日比(高い順)", dir:"desc"},
-    {key:"rel_volume", label:"相対出来高(高い順)", dir:"desc"},
-    {key:"symbol", label:"銘柄名(A→Z)", dir:"asc"},
+    {key:"day_opportunity", label:"利益期待スコア", dir:"desc"},
+    {key:"day_risk", label:"リスクスコア", dir:"desc"},
+    {key:"day_timing_score", label:"タイミングの良さ(利益期待-リスク)", dir:"desc"},
+    {key:"price", label:"現在値", dir:"desc"},
+    {key:"day_change_pct", label:"前日比", dir:"desc"},
+    {key:"rel_volume", label:"相対出来高", dir:"desc"},
+    {key:"symbol", label:"銘柄名", dir:"asc"},
   ],
   long_term: [
-    {key:"long_opportunity", label:"利益期待スコア(高い順)", dir:"desc"},
-    {key:"long_risk", label:"リスクスコア(高い順)", dir:"desc"},
-    {key:"mom_3m", label:"3ヶ月騰落率(高い順)", dir:"desc"},
-    {key:"per", label:"PER(低い順)", dir:"asc"},
-    {key:"symbol", label:"銘柄名(A→Z)", dir:"asc"},
+    {key:"long_opportunity", label:"利益期待スコア", dir:"desc"},
+    {key:"long_risk", label:"リスクスコア", dir:"desc"},
+    {key:"long_timing_score", label:"タイミングの良さ(利益期待-リスク)", dir:"desc"},
+    {key:"price", label:"現在値", dir:"desc"},
+    {key:"mom_3m", label:"3ヶ月騰落率", dir:"desc"},
+    {key:"per", label:"PER", dir:"asc"},
+    {key:"symbol", label:"銘柄名", dir:"asc"},
   ],
   major: [
-    {key:"long_opportunity", label:"利益期待スコア(高い順)", dir:"desc"},
-    {key:"day_change_pct", label:"前日比(高い順)", dir:"desc"},
-    {key:"mom_3m", label:"3ヶ月騰落率(高い順)", dir:"desc"},
-    {key:"symbol", label:"銘柄名(A→Z)", dir:"asc"},
+    {key:"long_opportunity", label:"利益期待スコア", dir:"desc"},
+    {key:"price", label:"現在値", dir:"desc"},
+    {key:"day_change_pct", label:"前日比", dir:"desc"},
+    {key:"mom_3m", label:"3ヶ月騰落率", dir:"desc"},
+    {key:"symbol", label:"銘柄名", dir:"asc"},
   ],
 };
+
+let sortDir = "desc"; // 現在の並び替え方向(ボタンで昇順/降順を独立トグル)
 
 let currentTab = "day_trade";
 let currentData = null;
@@ -220,9 +231,9 @@ function cardDayTrade(r){
       <span class="chip"><span class="lbl">RSI14</span>${fmtNum(r.rsi14)}</span>
     </div>
     <div class="notes">
-      <div class="note-line"><span class="lbl situation">現状</span><br>${r.day_situation||"—"}</div>
-      <div class="note-line"><span class="lbl outlook">見立て</span><br>${r.day_outlook||"—"}</div>
-      <div class="note-line"><span class="lbl timing">タイミング</span><br>${r.day_timing||"—"}</div>
+      <div class="note-line"><span class="lbl situation">現状</span>${r.day_situation||"—"}</div>
+      <div class="note-line"><span class="lbl outlook">見立て</span>${r.day_outlook||"—"}</div>
+      <div class="note-line"><span class="lbl timing">タイミング</span>${r.day_timing||"—"}</div>
     </div>
     <div class="earnings">次回決算: ${r.next_earnings||"不明"}</div>
   </div>`;
@@ -251,9 +262,9 @@ function cardLongTerm(r, showScore){
       <span class="chip"><span class="lbl">セクター</span>${r.sector||"—"}</span>
     </div>
     <div class="notes">
-      <div class="note-line"><span class="lbl situation">現状</span><br>${r.long_situation||"—"}</div>
-      <div class="note-line"><span class="lbl outlook">見立て</span><br>${r.long_outlook||"—"}</div>
-      <div class="note-line"><span class="lbl timing">タイミング</span><br>${r.long_timing||"—"}</div>
+      <div class="note-line"><span class="lbl situation">現状</span>${r.long_situation||"—"}</div>
+      <div class="note-line"><span class="lbl outlook">見立て</span>${r.long_outlook||"—"}</div>
+      <div class="note-line"><span class="lbl timing">タイミング</span>${r.long_timing||"—"}</div>
     </div>
     <div class="earnings">次回決算: ${r.next_earnings||"不明"}</div>
   </div>`;
@@ -264,16 +275,24 @@ function renderCards(){
   const filterVal = document.getElementById("filterBox").value.trim().toUpperCase();
   let rows = filterVal ? rows0.filter(r => (r.symbol||"").toUpperCase().includes(filterVal)) : rows0.slice();
 
-  const opt = SORT_OPTIONS[currentTab].find(o => o.key === sortKey) || SORT_OPTIONS[currentTab][0];
+  // 計算フィールド: タイミングの良さ = 利益期待スコア - リスクスコア(簡易指標)
+  rows = rows.map(r => ({
+    ...r,
+    day_timing_score: (r.day_opportunity ?? null) !== null && (r.day_risk ?? null) !== null
+      ? r.day_opportunity - r.day_risk : null,
+    long_timing_score: (r.long_opportunity ?? null) !== null && (r.long_risk ?? null) !== null
+      ? r.long_opportunity - r.long_risk : null,
+  }));
+
   rows.sort((a,b) => {
-    let av = a[opt.key], bv = b[opt.key];
-    if(av===null||av===undefined) av = opt.dir==="asc" ? Infinity : -Infinity;
-    if(bv===null||bv===undefined) bv = opt.dir==="asc" ? Infinity : -Infinity;
+    let av = a[sortKey], bv = b[sortKey];
+    if(av===null||av===undefined) av = sortDir==="asc" ? Infinity : -Infinity;
+    if(bv===null||bv===undefined) bv = sortDir==="asc" ? Infinity : -Infinity;
     if(typeof av === "string" || typeof bv === "string"){
       av = String(av); bv = String(bv);
-      return opt.dir==="asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+      return sortDir==="asc" ? av.localeCompare(bv) : bv.localeCompare(av);
     }
-    return opt.dir==="asc" ? av-bv : bv-av;
+    return sortDir==="asc" ? av-bv : bv-av;
   });
 
   const wrap = document.getElementById("cardsWrap");
@@ -288,11 +307,19 @@ function renderCards(){
   }).join("");
 }
 
+function updateDirButton(){
+  const btn = document.getElementById("dirToggle");
+  btn.textContent = sortDir === "desc" ? "▼ 降順" : "▲ 昇順";
+}
+
 function populateSortSelect(){
   const sel = document.getElementById("sortSelect");
   sel.innerHTML = SORT_OPTIONS[currentTab].map(o => `<option value="${o.key}">${o.label}</option>`).join("");
-  sortKey = SORT_OPTIONS[currentTab][0].key;
+  const first = SORT_OPTIONS[currentTab][0];
+  sortKey = first.key;
+  sortDir = first.dir;
   sel.value = sortKey;
+  updateDirButton();
 }
 
 function switchTab(tab){
@@ -305,7 +332,18 @@ function switchTab(tab){
 async function init(){
   document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => switchTab(t.dataset.tab)));
   document.getElementById("filterBox").addEventListener("input", renderCards);
-  document.getElementById("sortSelect").addEventListener("change", (e) => { sortKey = e.target.value; renderCards(); });
+  document.getElementById("sortSelect").addEventListener("change", (e) => {
+    sortKey = e.target.value;
+    const opt = SORT_OPTIONS[currentTab].find(o => o.key === sortKey);
+    sortDir = opt ? opt.dir : "desc";
+    updateDirButton();
+    renderCards();
+  });
+  document.getElementById("dirToggle").addEventListener("click", () => {
+    sortDir = sortDir === "desc" ? "asc" : "desc";
+    updateDirButton();
+    renderCards();
+  });
   populateSortSelect();
 
   try{
