@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>米国株スキャナー | 結果ビューア</title>
+<style>
+  :root{
+    --bg:#0d1117;
+    --panel:#12181f;
+    --line:#25303b;
+    --text:#d7dee5;
+    --muted:#7c8a99;
+    --accent:#3fb68f;
+    --up:#3fb68f;
+    --down:#d9645f;
+    --warn:#c9a24b;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:"SF Mono","Consolas",ui-monospace,Menlo,monospace;
+    font-size:13px;
+    line-height:1.5;
+  }
+  header{
+    padding:20px 24px 14px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    flex-wrap:wrap;
+    align-items:baseline;
+    gap:16px;
+  }
+  header h1{
+    font-size:16px;
+    font-weight:600;
+    letter-spacing:.02em;
+    margin:0;
+    color:#eef2f5;
+  }
+  header .meta{
+    color:var(--muted);
+    font-size:12px;
+  }
+  .controls{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-left:auto;
+    flex-wrap:wrap;
+  }
+  select, input[type=text]{
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:6px 10px;
+    font-family:inherit;
+    font-size:12px;
+    border-radius:3px;
+  }
+  select:focus, input:focus{outline:1px solid var(--accent);}
+  .tabs{
+    display:flex;
+    gap:2px;
+    padding:0 24px;
+    border-bottom:1px solid var(--line);
+    background:var(--bg);
+  }
+  .tab{
+    padding:10px 16px;
+    cursor:pointer;
+    color:var(--muted);
+    font-size:12px;
+    border-bottom:2px solid transparent;
+    user-select:none;
+  }
+  .tab.active{
+    color:#eef2f5;
+    border-bottom-color:var(--accent);
+  }
+  main{padding:16px 24px 60px;}
+  .status{
+    color:var(--muted);
+    padding:40px 0;
+    text-align:center;
+  }
+  .table-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:4px;}
+  table{
+    border-collapse:collapse;
+    width:100%;
+    min-width:900px;
+  }
+  thead th{
+    position:sticky; top:0;
+    background:#161d25;
+    color:var(--muted);
+    text-align:left;
+    padding:8px 10px;
+    font-weight:500;
+    font-size:11px;
+    letter-spacing:.03em;
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  thead th:hover{color:var(--text);}
+  thead th.sorted::after{
+    content:" " attr(data-dir);
+    color:var(--accent);
+  }
+  tbody td{
+    padding:7px 10px;
+    border-bottom:1px solid #1a222c;
+    white-space:nowrap;
+  }
+  tbody tr:hover{background:#141b23;}
+  td.sym{font-weight:600; color:#eef2f5;}
+  td.note{white-space:normal; min-width:240px; color:var(--muted); font-size:11.5px;}
+  .pos{color:var(--up);}
+  .neg{color:var(--down);}
+  .score{font-weight:600; color:var(--warn);}
+  footer{
+    padding:16px 24px 40px;
+    color:var(--muted);
+    font-size:11px;
+    border-top:1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>米国株スキャナー結果</h1>
+  <span class="meta" id="metaInfo">読み込み中…</span>
+  <div class="controls">
+    <select id="dateSelect"></select>
+    <input type="text" id="filterBox" placeholder="銘柄フィルタ (例: AAPL)">
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="day_trade">デイトレード候補</div>
+  <div class="tab" data-tab="long_term">長期・成長期待候補</div>
+  <div class="tab" data-tab="major">S&amp;P500など主要企業</div>
+</div>
+
+<main>
+  <div id="statusMsg" class="status">データを読み込んでいます…</div>
+  <div class="table-wrap" id="tableWrap" style="display:none;"></div>
+</main>
+
+<footer>
+  データ出典: 価格・出来高・テクニカル指標はWebull OpenAPI、ファンダメンタルズはyfinance。
+  スコア・コメントはルールベースの目安であり、投資助言ではありません。列見出しクリックでソートできます。
+</footer>
+
+<script>
+const DATA_DIR = "../data"; // docs/ と同階層の data/ を参照
+
+const COLUMNS = {
+  day_trade: [
+    {key:"symbol", label:"銘柄"},
+    {key:"price", label:"現在値", fmt:"usd"},
+    {key:"day_change_pct", label:"前日比", fmt:"pct"},
+    {key:"atr_pct", label:"ATR%", fmt:"pct1"},
+    {key:"rel_volume", label:"相対出来高", fmt:"x"},
+    {key:"rsi14", label:"RSI14", fmt:"num0"},
+    {key:"day_opportunity", label:"利益期待", fmt:"score"},
+    {key:"day_risk", label:"リスク", fmt:"score"},
+    {key:"next_earnings", label:"次回決算"},
+    {key:"day_situation", label:"現状", cls:"note"},
+    {key:"day_outlook", label:"見立て", cls:"note"},
+    {key:"day_timing", label:"タイミング目安", cls:"note"},
+  ],
+  long_term: [
+    {key:"symbol", label:"銘柄"},
+    {key:"price", label:"現在値", fmt:"usd"},
+    {key:"mom_3m", label:"3ヶ月騰落率", fmt:"pct"},
+    {key:"above_sma200", label:"200日線上", fmt:"bool"},
+    {key:"per", label:"PER", fmt:"ratio"},
+    {key:"pbr", label:"PBR", fmt:"ratio"},
+    {key:"net_cash_ratio", label:"ネットキャッシュ比率", fmt:"pct"},
+    {key:"sector", label:"セクター"},
+    {key:"long_opportunity", label:"利益期待", fmt:"score"},
+    {key:"long_risk", label:"リスク", fmt:"score"},
+    {key:"next_earnings", label:"次回決算"},
+    {key:"long_situation", label:"現状", cls:"note"},
+    {key:"long_outlook", label:"見立て", cls:"note"},
+    {key:"long_timing", label:"タイミング目安", cls:"note"},
+  ],
+  major: [
+    {key:"symbol", label:"銘柄"},
+    {key:"price", label:"現在値", fmt:"usd"},
+    {key:"day_change_pct", label:"前日比", fmt:"pct"},
+    {key:"mom_3m", label:"3ヶ月騰落率", fmt:"pct"},
+    {key:"above_sma200", label:"200日線上", fmt:"bool"},
+    {key:"per", label:"PER", fmt:"ratio"},
+    {key:"pbr", label:"PBR", fmt:"ratio"},
+    {key:"sector", label:"セクター"},
+    {key:"long_opportunity", label:"利益期待", fmt:"score"},
+    {key:"next_earnings", label:"次回決算"},
+    {key:"long_outlook", label:"見立て", cls:"note"},
+  ],
+};
+
+let currentTab = "day_trade";
+let currentData = null; // parsed snapshot json
+let sortState = {key:"day_opportunity", dir:"desc"};
+
+function fmtCell(v, fmt){
+  if(v===null || v===undefined || v==="") return "—";
+  switch(fmt){
+    case "usd": return "$" + Number(v).toFixed(2);
+    case "pct": {
+      const n = Number(v);
+      const sign = n>=0 ? "+" : "";
+      return sign + n.toFixed(2) + "%";
+    }
+    case "pct1": return Number(v).toFixed(1) + "%";
+    case "x": return Number(v).toFixed(2) + "x";
+    case "num0": return Math.round(Number(v));
+    case "ratio": return Number(v).toFixed(1) + "倍";
+    case "score": return Math.round(Number(v));
+    case "bool": return v ? "○" : "×";
+    default: return v;
+  }
+}
+
+function cellClass(key, v, fmt){
+  if(fmt==="pct" && typeof v === "number"){
+    return v > 0 ? "pos" : (v < 0 ? "neg" : "");
+  }
+  if(fmt==="score") return "score";
+  if(key==="symbol") return "sym";
+  return "";
+}
+
+async function loadIndex(){
+  const res = await fetch(`${DATA_DIR}/index.json`, {cache:"no-store"});
+  if(!res.ok) throw new Error("index.json の取得に失敗しました");
+  return res.json();
+}
+
+async function loadSnapshot(file){
+  const res = await fetch(`${DATA_DIR}/${file}`, {cache:"no-store"});
+  if(!res.ok) throw new Error(`${file} の取得に失敗しました`);
+  return res.json();
+}
+
+function renderTable(){
+  const cols = COLUMNS[currentTab];
+  let rows = (currentData[currentTab] || []).slice();
+
+  const filterVal = document.getElementById("filterBox").value.trim().toUpperCase();
+  if(filterVal){
+    rows = rows.filter(r => (r.symbol || "").toUpperCase().includes(filterVal));
+  }
+
+  rows.sort((a,b) => {
+    let av = a[sortState.key], bv = b[sortState.key];
+    if(av===null||av===undefined) av = -Infinity;
+    if(bv===null||bv===undefined) bv = -Infinity;
+    if(typeof av === "string" || typeof bv === "string"){
+      av = String(av); bv = String(bv);
+      return sortState.dir==="asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    }
+    return sortState.dir==="asc" ? av-bv : bv-av;
+  });
+
+  const wrap = document.getElementById("tableWrap");
+  if(rows.length === 0){
+    wrap.innerHTML = `<div class="status">該当する銘柄がありません</div>`;
+    return;
+  }
+
+  let thead = "<thead><tr>" + cols.map(c => {
+    const sorted = c.key === sortState.key;
+    const dir = sorted ? (sortState.dir==="asc" ? "▲" : "▼") : "";
+    return `<th data-key="${c.key}" class="${sorted?'sorted':''}" data-dir="${dir}">${c.label}</th>`;
+  }).join("") + "</tr></thead>";
+
+  let tbody = "<tbody>" + rows.map(r => {
+    return "<tr>" + cols.map(c => {
+      const v = r[c.key];
+      const cls = c.cls || cellClass(c.key, v, c.fmt);
+      return `<td class="${cls}">${fmtCell(v, c.fmt)}</td>`;
+    }).join("") + "</tr>";
+  }).join("") + "</tbody>";
+
+  wrap.innerHTML = thead + tbody;
+  wrap.style.display = "";
+  document.getElementById("statusMsg").style.display = "none";
+
+  wrap.querySelectorAll("thead th").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if(sortState.key === key){
+        sortState.dir = sortState.dir === "asc" ? "desc" : "asc";
+      } else {
+        sortState.key = key;
+        sortState.dir = "desc";
+      }
+      renderTable();
+    });
+  });
+}
+
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab===tab));
+  const defaultSort = {day_trade:"day_opportunity", long_term:"long_opportunity", major:"long_opportunity"};
+  sortState = {key: defaultSort[tab], dir:"desc"};
+  renderTable();
+}
+
+async function init(){
+  document.querySelectorAll(".tab").forEach(t => {
+    t.addEventListener("click", () => switchTab(t.dataset.tab));
+  });
+  document.getElementById("filterBox").addEventListener("input", renderTable);
+
+  try{
+    const index = await loadIndex();
+    const select = document.getElementById("dateSelect");
+    select.innerHTML = index.snapshots.map(s =>
+      `<option value="${s.file}">${s.generated_at_jst}</option>`
+    ).join("");
+
+    select.addEventListener("change", async () => {
+      currentData = await loadSnapshot(select.value);
+      document.getElementById("metaInfo").textContent =
+        `ユニバース ${currentData.universe_size}銘柄 / データ取得成功 ${currentData.scanned_size}銘柄`;
+      renderTable();
+    });
+
+    if(index.snapshots.length === 0){
+      document.getElementById("statusMsg").textContent = "まだスキャン結果がありません。";
+      return;
+    }
+    currentData = await loadSnapshot(index.snapshots[0].file);
+    document.getElementById("metaInfo").textContent =
+      `ユニバース ${currentData.universe_size}銘柄 / データ取得成功 ${currentData.scanned_size}銘柄`;
+    renderTable();
+  } catch(e){
+    document.getElementById("statusMsg").textContent = "データの読み込みに失敗しました: " + e.message;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
