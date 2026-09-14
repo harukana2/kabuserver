@@ -1265,7 +1265,7 @@ def render_email_html(day_list, long_list, major_list, universe_size, scanned_si
 
 
 def _json_safe(v):
-    """NaN/NaT/numpy型などをJSONに安全な値に変換する"""
+    """NaN/NaT/numpy型/日付型などをJSONに安全な値に変換する"""
     if v is None:
         return None
     if isinstance(v, float) and np.isnan(v):
@@ -1276,11 +1276,31 @@ def _json_safe(v):
         return None if np.isnan(v) else float(v)
     if isinstance(v, (np.bool_,)):
         return bool(v)
+    if isinstance(v, (np.datetime64, pd.Timestamp)):
+        if pd.isna(v):
+            return None
+        return pd.Timestamp(v).strftime("%Y-%m-%d")
+    if isinstance(v, (datetime,)):
+        return v.strftime("%Y-%m-%d")
+    if isinstance(v, float):
+        return v
     return v
 
 
 def _clean_records(records: list[dict]) -> list[dict]:
     return [{k: _json_safe(v) for k, v in r.items()} for r in records]
+
+
+def _atomic_write_json(path: str, obj) -> None:
+    """
+    一時ファイルに書き込んでから os.replace でファイル差し替えを行う。
+    書き込み途中で例外が起きても、既存の path の中身は破壊されない
+    (open(path, "w") で直接書くと、途中失敗時にファイルが空になるバグがあった)。
+    """
+    tmp_path = f"{path}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, path)  # 同一ファイルシステム内でのrenameはアトミック
 
 
 def save_json_snapshot(day_list, long_list, major_list, universe_size, scanned_size) -> str | None:
@@ -1308,11 +1328,10 @@ def save_json_snapshot(day_list, long_list, major_list, universe_size, scanned_s
             "long_term": _clean_records(long_list),
             "major": _clean_records(major_list),
         }
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(snapshot, f, ensure_ascii=False, indent=2)
+        _atomic_write_json(filepath, snapshot)
 
         # index.json (全スナップショットの一覧。閲覧ページの日付セレクタ用)
-        if os.path.exists(INDEX_JSON_PATH):
+        if os.path.exists(INDEX_JSON_PATH) and os.path.getsize(INDEX_JSON_PATH) > 0:
             with open(INDEX_JSON_PATH, "r", encoding="utf-8") as f:
                 index = json.load(f)
         else:
@@ -1333,13 +1352,13 @@ def save_json_snapshot(day_list, long_list, major_list, universe_size, scanned_s
                 if os.path.exists(old_path):
                     os.remove(old_path)
 
-        with open(INDEX_JSON_PATH, "w", encoding="utf-8") as f:
-            json.dump(index, f, ensure_ascii=False, indent=2)
+        _atomic_write_json(INDEX_JSON_PATH, index)
 
         print(f"[info] JSONスナップショット保存: {filepath}")
         return filepath
     except Exception as e:
         print(f"[warn] JSONスナップショット保存に失敗しました: {e}")
+        traceback.print_exc()
         return None
 
 
