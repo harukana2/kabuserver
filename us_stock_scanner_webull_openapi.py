@@ -110,6 +110,13 @@ from webull.data.common.timespan import Timespan
 # デバッグ高速化用: 環境変数 SCAN_FUNDAMENTALS_TOP_N で上書き可能(空文字列は無視)
 FUNDAMENTALS_STAGE_TOP_N = int(os.environ.get("SCAN_FUNDAMENTALS_TOP_N") or 40)
 
+# S&P500構成銘柄のうち、ファンダメンタルズ取得の対象にする上限件数
+# (activity_score = 出来高・値動きの活発さ が高い順に選ぶ)。
+# None なら無制限(S&P500全銘柄が対象になり、候補数が数百件規模になる)。
+# 候補数の合計をおおよそ FUNDAMENTALS_STAGE_TOP_N + SP500_STAGE_TOP_N 件に抑えたい場合はここを調整。
+# 環境変数 SCAN_SP500_TOP_N でも上書き可能。
+SP500_STAGE_TOP_N = int(os.environ.get("SCAN_SP500_TOP_N") or 60)
+
 # メールに実際に載せる銘柄数
 DAY_TRADE_LIST_SIZE = 12
 LONG_TERM_LIST_SIZE = 12
@@ -1036,9 +1043,14 @@ def run_scan():
     # デバッグ高速化用: SCAN_SKIP_SP500=1 でS&P500全銘柄への無条件追加をスキップ
     # (通常運用時はS&P500構成銘柄を「主要企業欄」用に必ず含めるため入れている)
     skip_sp500 = os.environ.get("SCAN_SKIP_SP500", "").lower() in ("1", "true", "yes")
-    sp500_rows = (
-        tech_df[tech_df["is_sp500"]] if (sp500_set and not skip_sp500) else tech_df.iloc[0:0]
-    )
+    if sp500_set and not skip_sp500:
+        sp500_rows = tech_df[tech_df["is_sp500"]]
+        if SP500_STAGE_TOP_N is not None:
+            sp500_rows = sp500_rows.sort_values("activity_score", ascending=False).head(
+                SP500_STAGE_TOP_N
+            )
+    else:
+        sp500_rows = tech_df.iloc[0:0]
     shortlist = (
         pd.concat([activity_top, sp500_rows])
         .drop_duplicates(subset="symbol")
@@ -1094,7 +1106,7 @@ def run_scan():
         .to_dict("records")
     )
 
-    return day_trade_list, long_term_list, major_list, universe
+    return day_trade_list, long_term_list, major_list, universe, len(cand_df)
 
 
 # --------------------------------------------------------------------------
@@ -1386,8 +1398,7 @@ def send_email(html_body: str) -> bool:
 
 def main():
     try:
-        day_list, long_list, major_list, universe = run_scan()
-        scanned_size = len(day_list) + len(long_list) + len(major_list)
+        day_list, long_list, major_list, universe, scanned_size = run_scan()
         html = render_email_html(day_list, long_list, major_list, len(universe), scanned_size)
 
         # Web閲覧ページ(GitHub Pages)用にJSONスナップショットを保存
