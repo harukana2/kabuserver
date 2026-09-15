@@ -108,18 +108,18 @@ from webull.data.common.timespan import Timespan
 
 # 技術面ステージから、コストの高いファンダメンタルズ取得に進める候補数
 # デバッグ高速化用: 環境変数 SCAN_FUNDAMENTALS_TOP_N で上書き可能(空文字列は無視)
-FUNDAMENTALS_STAGE_TOP_N = int(os.environ.get("SCAN_FUNDAMENTALS_TOP_N") or 40)
+FUNDAMENTALS_STAGE_TOP_N = int(os.environ.get("SCAN_FUNDAMENTALS_TOP_N") or 400)
 
 # S&P500構成銘柄のうち、ファンダメンタルズ取得の対象にする上限件数
 # (activity_score = 出来高・値動きの活発さ が高い順に選ぶ)。
 # None なら無制限(S&P500全銘柄が対象になり、候補数が数百件規模になる)。
 # 候補数の合計をおおよそ FUNDAMENTALS_STAGE_TOP_N + SP500_STAGE_TOP_N 件に抑えたい場合はここを調整。
 # 環境変数 SCAN_SP500_TOP_N でも上書き可能。
-SP500_STAGE_TOP_N = int(os.environ.get("SCAN_SP500_TOP_N") or 60)
+SP500_STAGE_TOP_N = int(os.environ.get("SCAN_SP500_TOP_N") or 600)
 
 # メールに実際に載せる銘柄数
-DAY_TRADE_LIST_SIZE = 12
-LONG_TERM_LIST_SIZE = 12
+DAY_TRADE_LIST_SIZE = 15
+LONG_TERM_LIST_SIZE = 15
 
 # S&P500など主要企業欄に載せる銘柄数(スコア上位)
 MAJOR_LIST_SIZE = 15
