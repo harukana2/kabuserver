@@ -1,6 +1,11 @@
 {
   "snapshots": [
     {
+      "run_id": "20260915_232001",
+      "file": "scan_20260915_232001.json",
+      "generated_at_jst": "2026-09-15 23:20:01 JST"
+    },
+    {
       "run_id": "20260915_222519",
       "file": "scan_20260915_222519.json",
       "generated_at_jst": "2026-09-15 22:25:19 JST"
