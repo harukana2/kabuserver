@@ -92,6 +92,25 @@
   }
   .badge.opp{background:#fce8e6; color:var(--opp);}
   .badge.risk{background:#f3e8fd; color:var(--risk);}
+  .badge.pred{background:#f1f3f4;}
+  .accuracy-line{margin-top:8px; font-size:12px; color:var(--muted);}
+  .accuracy-line .hit{color:var(--down); font-weight:700;}
+  .accuracy-line .miss{color:var(--accent); font-weight:700;}
+  .analysis-controls{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px;
+  }
+  .analysis-controls input[type=text]{flex:1; min-width:120px; text-transform:uppercase;}
+  .scale-btn{
+    background:#fff; border:1px solid var(--line); color:var(--text);
+    padding:7px 14px; border-radius:8px; font-size:12.5px; cursor:pointer;
+  }
+  .scale-btn.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .go-btn{
+    background:var(--accent); color:#fff; border:none;
+    padding:8px 16px; border-radius:8px; font-size:13px; cursor:pointer;
+  }
+  #analysisChart{width:100%; height:260px; display:block; background:var(--card); border:1px solid var(--line); border-radius:12px;}
+  .analysis-title{font-size:15px; font-weight:700; margin:16px 0 8px;}
   .stat-row{
     display:flex; flex-wrap:wrap; gap:6px 8px; margin-top:10px;
   }
@@ -132,8 +151,9 @@
     <div class="tab active" data-tab="day_trade">デイトレード候補</div>
     <div class="tab" data-tab="long_term">長期・成長期待候補</div>
     <div class="tab" data-tab="major">S&amp;P500など主要企業</div>
+    <div class="tab" data-tab="analysis">分析</div>
   </div>
-  <div class="sortbar">
+  <div class="sortbar" id="sortbarWrap">
     並び替え:
     <select id="sortSelect"></select>
     <button id="dirToggle" type="button" class="dirbtn">▼ 降順</button>
@@ -143,6 +163,19 @@
 <main>
   <div id="statusMsg" class="status">データを読み込んでいます…</div>
   <div id="cardsWrap"></div>
+
+  <div id="analysisPanel" style="display:none;">
+    <div class="analysis-controls">
+      <input type="text" id="analysisSymbol" placeholder="銘柄コード (例: AAPL)">
+      <button class="scale-btn active" data-scale="1d" type="button">1日</button>
+      <button class="scale-btn" data-scale="5d" type="button">5日</button>
+      <button class="scale-btn" data-scale="1m" type="button">1か月</button>
+      <button class="go-btn" id="analysisGoBtn" type="button">表示</button>
+    </div>
+    <canvas id="analysisChart"></canvas>
+    <div class="analysis-title">過去の予想と的中判定</div>
+    <div id="analysisPredictions"></div>
+  </div>
 </main>
 
 <footer>
@@ -183,6 +216,112 @@ const SORT_OPTIONS = {
 
 let sortDir = "desc"; // 現在の並び替え方向(ボタンで昇順/降順を独立トグル)
 
+const PREDICTION_META = {
+  "大きく値上がり": {color:"#c5221f", bg:"#fce8e6", icon:"↑↑"},
+  "少し値上がり":   {color:"#e8710a", bg:"#fef2e0", icon:"↑"},
+  "変動なし":       {color:"#5f6368", bg:"#f1f3f4", icon:"→"},
+  "少し値下がり":   {color:"#1a73e8", bg:"#e8f0fe", icon:"↓"},
+  "大きく値下がり": {color:"#0b3d91", bg:"#e3e9fb", icon:"↓↓"},
+};
+
+function predBadge(category){
+  if(!category) return "";
+  const m = PREDICTION_META[category] || {color:"#5f6368", bg:"#f1f3f4", icon:""};
+  return `<span class="badge pred" style="background:${m.bg};color:${m.color};">予想 ${m.icon} ${category}</span>`;
+}
+
+// --- 予想ログ・株価履歴(分析タブ・的中表示用) ---
+let predictionsLogCache = null;
+const symbolHistoryCache = {};
+const symbolIntradayCache = {};
+
+async function loadPredictionsLog(){
+  if(predictionsLogCache) return predictionsLogCache;
+  try{
+    const res = await fetch(`${DATA_DIR}/predictions_log.json`, {cache:"no-store"});
+    if(!res.ok){ predictionsLogCache = {entries:[]}; return predictionsLogCache; }
+    const text = await res.text();
+    predictionsLogCache = text.trim() ? JSON.parse(text) : {entries:[]};
+  }catch(e){ predictionsLogCache = {entries:[]}; }
+  return predictionsLogCache;
+}
+
+async function loadSymbolHistory(sym){
+  if(symbolHistoryCache[sym]) return symbolHistoryCache[sym];
+  try{
+    const res = await fetch(`${DATA_DIR}/history/${sym}.json`, {cache:"no-store"});
+    if(!res.ok){ symbolHistoryCache[sym] = []; return []; }
+    const text = await res.text();
+    symbolHistoryCache[sym] = text.trim() ? JSON.parse(text) : [];
+  }catch(e){ symbolHistoryCache[sym] = []; }
+  return symbolHistoryCache[sym];
+}
+
+async function loadSymbolIntraday(sym){
+  if(symbolIntradayCache[sym]) return symbolIntradayCache[sym];
+  try{
+    const res = await fetch(`${DATA_DIR}/intraday/${sym}.json`, {cache:"no-store"});
+    if(!res.ok){ symbolIntradayCache[sym] = null; return null; }
+    const text = await res.text();
+    symbolIntradayCache[sym] = text.trim() ? JSON.parse(text) : null;
+  }catch(e){ symbolIntradayCache[sym] = null; }
+  return symbolIntradayCache[sym];
+}
+
+// 予想が「的中」したかを判定する。
+// 値上がり予想: 期間中の終値が1度でも予想時の価格を上回ればOK(上昇率を赤で表示)。
+// 値下がり予想: 期間中の終値が1度でも予想時の価格を下回ればOK(下落率を赤で表示)。
+// 外した場合は、期間中の最良ケースでの乖離率を青で表示する。
+// 変動なし予想: 期間中の乖離幅が±3%以内に収まっていれば的中。
+function judgePrediction(entry, hist){
+  const p0 = entry.price_at_prediction;
+  if(p0 === null || p0 === undefined || !hist || hist.length === 0) return null;
+  const windowPts = hist.filter(h => h.date >= entry.made_date && h.date <= entry.horizon_end);
+  if(windowPts.length === 0) return null;
+
+  const isUp = entry.category.includes("値上がり");
+  const isDown = entry.category.includes("値下がり");
+  let hit, movePct;
+  if(isUp){
+    const maxClose = Math.max(...windowPts.map(h=>h.close));
+    movePct = (maxClose - p0) / p0 * 100;
+    hit = movePct > 0;
+  } else if(isDown){
+    const minClose = Math.min(...windowPts.map(h=>h.close));
+    movePct = (minClose - p0) / p0 * 100;
+    hit = movePct < 0;
+  } else {
+    const maxAbsPct = Math.max(...windowPts.map(h => Math.abs((h.close - p0) / p0 * 100)));
+    movePct = maxAbsPct;
+    hit = maxAbsPct < 3;
+  }
+  const todayStr = new Date().toISOString().slice(0,10);
+  const resolved = entry.horizon_end <= todayStr;
+  return {hit, movePct, resolved};
+}
+
+function accuracyChipHtml(j){
+  if(!j) return `<span class="accuracy-line">判定材料が集まり次第、的中結果を表示します</span>`;
+  const sign = j.movePct >= 0 ? "+" : "";
+  if(j.hit){
+    return `<span class="accuracy-line">前回予想: <span class="hit">的中 (${sign}${j.movePct.toFixed(1)}%)</span>${j.resolved?"":" ・判定期間中"}</span>`;
+  }
+  return `<span class="accuracy-line">前回予想: <span class="miss">未達 (${sign}${j.movePct.toFixed(1)}%)</span>${j.resolved?"":" ・判定期間中"}</span>`;
+}
+
+// カード内に「前回予想の的中判定」を非同期で差し込む
+async function attachAccuracy(elId, symbol, kind){
+  const log = await loadPredictionsLog();
+  const entries = log.entries.filter(e => e.symbol === symbol && e.kind === kind);
+  if(entries.length === 0) return;
+  entries.sort((a,b)=> b.made_at.localeCompare(a.made_at));
+  const latest = entries[0];
+  const hist = await loadSymbolHistory(symbol);
+  const j = judgePrediction(latest, hist);
+  const el = document.getElementById(elId);
+  if(el) el.innerHTML = accuracyChipHtml(j);
+}
+
 let currentTab = "day_trade";
 let currentData = null;
 let sortKey = "day_opportunity";
@@ -214,6 +353,7 @@ async function loadSnapshot(file){
 
 function cardDayTrade(r){
   const chgCls = (r.day_change_pct||0) >= 0 ? "pos" : "neg";
+  const accId = `acc-day-${r.symbol}`;
   return `
   <div class="card">
     <div class="card-top">
@@ -229,12 +369,14 @@ function cardDayTrade(r){
       <span class="chip"><span class="lbl">ATR</span>${fmtNum(r.atr_pct,1)}%</span>
       <span class="chip"><span class="lbl">相対出来高</span>${fmtNum(r.rel_volume,2)}x</span>
       <span class="chip"><span class="lbl">RSI14</span>${fmtNum(r.rsi14)}</span>
+      ${predBadge(r.day_prediction)}
     </div>
     <div class="notes">
       <div class="note-line"><span class="lbl situation">現状</span><br>${r.day_situation||"—"}</div>
       <div class="note-line"><span class="lbl outlook">見立て</span><br>${r.day_outlook||"—"}</div>
       <div class="note-line"><span class="lbl timing">タイミング</span><br>${r.day_timing||"—"}</div>
     </div>
+    <div id="${accId}"></div>
     <div class="earnings">次回決算: ${r.next_earnings||"不明"}</div>
   </div>`;
 }
@@ -246,6 +388,7 @@ function cardLongTerm(r, showScore){
         <span class="badge risk">リスク ${fmtNum(r.long_risk)}</span>
       </div>` : `
       <div class="scores"><span class="badge opp">利益期待 ${fmtNum(r.long_opportunity)}</span></div>`;
+  const accId = `acc-long-${r.symbol}`;
   return `
   <div class="card">
     <div class="card-top">
@@ -260,12 +403,14 @@ function cardLongTerm(r, showScore){
       <span class="chip"><span class="lbl">PBR</span>${fmtRatio(r.pbr)}</span>
       <span class="chip"><span class="lbl">ネットキャッシュ比率</span>${fmtPct(r.net_cash_ratio)}</span>
       <span class="chip"><span class="lbl">セクター</span>${r.sector||"—"}</span>
+      ${predBadge(r.long_prediction)}
     </div>
     <div class="notes">
       <div class="note-line"><span class="lbl situation">現状</span><br>${r.long_situation||"—"}</div>
       <div class="note-line"><span class="lbl outlook">見立て</span><br>${r.long_outlook||"—"}</div>
       <div class="note-line"><span class="lbl timing">タイミング</span><br>${r.long_timing||"—"}</div>
     </div>
+    <div id="${accId}"></div>
     <div class="earnings">次回決算: ${r.next_earnings||"不明"}</div>
   </div>`;
 }
@@ -305,6 +450,16 @@ function renderCards(){
     if(currentTab === "long_term") return cardLongTerm(r, true);
     return cardLongTerm(r, false);
   }).join("");
+
+  // 各カードの「前回予想の的中判定」を非同期で読み込んで差し込む
+  rows.forEach(r => {
+    if(!r.symbol) return;
+    if(currentTab === "day_trade"){
+      attachAccuracy(`acc-day-${r.symbol}`, r.symbol, "day");
+    } else {
+      attachAccuracy(`acc-long-${r.symbol}`, r.symbol, "long");
+    }
+  });
 }
 
 function updateDirButton(){
@@ -325,8 +480,145 @@ function populateSortSelect(){
 function switchTab(tab){
   currentTab = tab;
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab===tab));
+
+  const isAnalysis = tab === "analysis";
+  document.getElementById("sortbarWrap").style.display = isAnalysis ? "none" : "flex";
+  document.getElementById("cardsWrap").style.display = isAnalysis ? "none" : "";
+  document.getElementById("analysisPanel").style.display = isAnalysis ? "block" : "none";
+  document.getElementById("statusMsg").style.display = "none";
+
+  if(isAnalysis){
+    if(analysisSymbol) runAnalysis(analysisSymbol, analysisScale);
+    return;
+  }
   populateSortSelect();
   renderCards();
+}
+
+// --------------------------------------------------------------------------
+// 分析タブ: 指定銘柄の株価推移 + 予想・的中判定
+// --------------------------------------------------------------------------
+let analysisSymbol = "";
+let analysisScale = "1d";
+
+function fmtChartLabel(dateStr){
+  // "2026-09-16" -> "09/16"
+  const parts = (dateStr||"").split("-");
+  return parts.length === 3 ? `${parts[1]}/${parts[2]}` : (dateStr||"");
+}
+
+async function runAnalysis(sym, scale){
+  sym = sym.toUpperCase().trim();
+  if(!sym) return;
+  analysisSymbol = sym;
+  analysisScale = scale;
+  document.getElementById("analysisSymbol").value = sym;
+  document.querySelectorAll(".scale-btn").forEach(b => b.classList.toggle("active", b.dataset.scale===scale));
+
+  const chartWrap = document.getElementById("analysisChart");
+  const predWrap = document.getElementById("analysisPredictions");
+  predWrap.innerHTML = `<div class="status">読み込み中…</div>`;
+
+  const hist = await loadSymbolHistory(sym);
+  let points = [];
+
+  if(scale === "1d"){
+    const intraday = await loadSymbolIntraday(sym);
+    if(intraday && intraday.points && intraday.points.length > 0){
+      points = intraday.points.map(p => ({label:p.t, price:p.price}));
+    }
+  } else if(scale === "5d"){
+    points = hist.slice(-5).map(h => ({label:fmtChartLabel(h.date), price:h.close}));
+  } else {
+    points = hist.slice(-22).map(h => ({label:fmtChartLabel(h.date), price:h.close}));
+  }
+
+  drawAnalysisChart(points, sym);
+
+  const log = await loadPredictionsLog();
+  const entries = log.entries.filter(e => e.symbol === sym);
+  renderAnalysisPredictions(entries, hist);
+}
+
+function drawAnalysisChart(points, sym){
+  const canvas = document.getElementById("analysisChart");
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 600;
+  const cssH = 260;
+  canvas.width = cssW * dpr;
+  canvas.height = cssH * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+
+  if(!points || points.length < 2){
+    ctx.fillStyle = "#5f6368";
+    ctx.font = "13px sans-serif";
+    ctx.fillText(`${sym||''} のデータがまだありません(スキャンの蓄積をお待ちください)`, 12, cssH/2);
+    return;
+  }
+
+  const prices = points.map(p=>p.price);
+  const min = Math.min(...prices), max = Math.max(...prices);
+  const pad = (max-min)*0.12 || Math.max(min*0.02, 0.5);
+  const yMin = min-pad, yMax = max+pad;
+  const left = 56, right = 16, top = 18, bottom = 28;
+  const plotW = cssW - left - right;
+  const plotH = cssH - top - bottom;
+  const xStep = points.length > 1 ? plotW/(points.length-1) : 0;
+
+  const xAt = i => left + i*xStep;
+  const yAt = v => top + plotH * (1 - (v - yMin)/(yMax - yMin || 1));
+
+  // 折れ線
+  ctx.strokeStyle = "#1a73e8";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  points.forEach((p,i) => {
+    const x = xAt(i), y = yAt(p.price);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // 軸ラベル
+  ctx.fillStyle = "#5f6368";
+  ctx.font = "11px sans-serif";
+  ctx.fillText(fmtUsd(yMax), 4, top+8);
+  ctx.fillText(fmtUsd(yMin), 4, top+plotH);
+  const labelStep = Math.max(1, Math.ceil(points.length/6));
+  points.forEach((p,i) => {
+    if(i % labelStep === 0 || i === points.length-1){
+      ctx.fillText(p.label, Math.min(xAt(i)-14, cssW-right-30), cssH-8);
+    }
+  });
+}
+
+function renderAnalysisPredictions(entries, hist){
+  const wrap = document.getElementById("analysisPredictions");
+  if(!entries || entries.length === 0){
+    wrap.innerHTML = `<div class="status">この銘柄の過去の予想はまだありません</div>`;
+    return;
+  }
+  entries = entries.slice().sort((a,b) => b.made_at.localeCompare(a.made_at));
+  wrap.innerHTML = entries.map(e => {
+    const j = judgePrediction(e, hist);
+    const meta = PREDICTION_META[e.category] || {color:"#5f6368"};
+    let resultHtml = `<span style="color:#5f6368;">判定材料が集まり次第、結果を表示します</span>`;
+    if(j){
+      const sign = j.movePct >= 0 ? "+" : "";
+      resultHtml = j.hit
+        ? `<span class="hit">的中 (${sign}${j.movePct.toFixed(1)}%)</span>`
+        : `<span class="miss">未達 (${sign}${j.movePct.toFixed(1)}%)</span>`;
+      if(!j.resolved) resultHtml += ` <span style="color:#5f6368;">・判定期間中(〜${e.horizon_end})</span>`;
+    }
+    return `<div class="card" style="padding:12px 16px;margin-bottom:8px;">
+      <div style="font-size:12px;color:var(--muted);">
+        ${e.made_date}時点 (${e.kind==='day'?'短期・1〜5営業日':'長期・1〜3ヶ月'}) ／ 予想時株価 ${fmtUsd(e.price_at_prediction)}
+      </div>
+      <div style="font-weight:700;color:${meta.color};margin-top:2px;">${e.category}</div>
+      <div class="accuracy-line" style="margin-top:6px;">${resultHtml}</div>
+    </div>`;
+  }).join("");
 }
 
 async function init(){
@@ -345,6 +637,17 @@ async function init(){
     renderCards();
   });
   populateSortSelect();
+
+  // 分析タブ操作
+  document.querySelectorAll(".scale-btn").forEach(btn => {
+    btn.addEventListener("click", () => runAnalysis(analysisSymbol || document.getElementById("analysisSymbol").value, btn.dataset.scale));
+  });
+  document.getElementById("analysisGoBtn").addEventListener("click", () => {
+    runAnalysis(document.getElementById("analysisSymbol").value, analysisScale);
+  });
+  document.getElementById("analysisSymbol").addEventListener("keydown", (e) => {
+    if(e.key === "Enter") runAnalysis(e.target.value, analysisScale);
+  });
 
   try{
     const index = await loadIndex();
@@ -365,6 +668,14 @@ async function init(){
     updateMeta();
     document.getElementById("statusMsg").style.display = "none";
     renderCards();
+
+    // 分析タブのデフォルト銘柄(デイトレード候補の先頭)を設定
+    const firstSym = (currentData.day_trade && currentData.day_trade[0] && currentData.day_trade[0].symbol)
+      || (currentData.long_term && currentData.long_term[0] && currentData.long_term[0].symbol);
+    if(firstSym){
+      analysisSymbol = firstSym;
+      document.getElementById("analysisSymbol").value = firstSym;
+    }
   } catch(e){
     document.getElementById("statusMsg").textContent = "データの読み込みに失敗しました: " + e.message;
   }
