@@ -539,6 +539,87 @@
       "horizon_end": "2026-12-20",
       "category": "大きく値上がり",
       "price_at_prediction": 141.9
+    },
+    {
+      "symbol": "ENVA",
+      "kind": "day",
+      "made_date": "2026-09-16",
+      "made_at": "2026-09-16 21:24:10 JST",
+      "horizon_end": "2026-09-23",
+      "category": "大きく値下がり",
+      "price_at_prediction": 173.61
+    },
+    {
+      "symbol": "FTFT",
+      "kind": "day",
+      "made_date": "2026-09-16",
+      "made_at": "2026-09-16 21:24:10 JST",
+      "horizon_end": "2026-09-23",
+      "category": "大きく値上がり",
+      "price_at_prediction": 5.74
+    },
+    {
+      "symbol": "FPS",
+      "kind": "day",
+      "made_date": "2026-09-16",
+      "made_at": "2026-09-16 21:24:10 JST",
+      "horizon_end": "2026-09-23",
+      "category": "大きく値下がり",
+      "price_at_prediction": 31.36
+    },
+    {
+      "symbol": "BIAF",
+      "kind": "day",
+      "made_date": "2026-09-16",
+      "made_at": "2026-09-16 21:24:10 JST",
+      "horizon_end": "2026-09-23",
+      "category": "少し値下がり",
+      "price_at_prediction": 6.36
+    },
+    {
+      "symbol": "CNC",
+      "kind": "day",
+      "made_date": "2026-09-16",
+      "made_at": "2026-09-16 21:24:10 JST",
+      "horizon_end": "2026-09-23",
+      "category": "大きく値上がり",
+      "price_at_prediction": 67.66
+    },
+    {
+      "symbol": "GEN",
+      "kind": "day",
+      "made_date": "2026-09-16",
+      "made_at": "2026-09-16 21:24:10 JST",
+      "horizon_end": "2026-09-23",
+      "category": "大きく値上がり",
+      "price_at_prediction": 31.23
+    },
+    {
+      "symbol": "BMNR",
+      "kind": "long",
+      "made_date": "2026-09-16",
+      "made_at": "2026-09-16 21:24:10 JST",
+      "horizon_end": "2026-12-20",
+      "category": "大きく値上がり",
+      "price_at_prediction": 23.6
+    },
+    {
+      "symbol": "CNC",
+      "kind": "long",
+      "made_date": "2026-09-16",
+      "made_at": "2026-09-16 21:24:10 JST",
+      "horizon_end": "2026-12-20",
+      "category": "大きく値上がり",
+      "price_at_prediction": 67.66
+    },
+    {
+      "symbol": "GEN",
+      "kind": "long",
+      "made_date": "2026-09-16",
+      "made_at": "2026-09-16 21:24:10 JST",
+      "horizon_end": "2026-12-20",
+      "category": "大きく値上がり",
+      "price_at_prediction": 31.23
     }
   ]
 }
