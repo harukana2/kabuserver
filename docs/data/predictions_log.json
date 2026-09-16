@@ -1196,6 +1196,24 @@
       "horizon_end": "2026-12-21",
       "category": "大きく値上がり",
       "price_at_prediction": 141.9
+    },
+    {
+      "symbol": "GDDY",
+      "kind": "day",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 02:23:56 JST",
+      "horizon_end": "2026-09-24",
+      "category": "大きく値上がり",
+      "price_at_prediction": 102.38
+    },
+    {
+      "symbol": "GDDY",
+      "kind": "long",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 02:23:56 JST",
+      "horizon_end": "2026-12-21",
+      "category": "大きく値上がり",
+      "price_at_prediction": 102.38
     }
   ]
 }
