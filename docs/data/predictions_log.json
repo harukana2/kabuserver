@@ -1160,6 +1160,42 @@
       "horizon_end": "2026-12-21",
       "category": "大きく値上がり",
       "price_at_prediction": 31.23
+    },
+    {
+      "symbol": "SDGR",
+      "kind": "day",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 01:28:39 JST",
+      "horizon_end": "2026-09-24",
+      "category": "大きく値上がり",
+      "price_at_prediction": 23.25
+    },
+    {
+      "symbol": "NOW",
+      "kind": "day",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 01:28:39 JST",
+      "horizon_end": "2026-09-24",
+      "category": "大きく値上がり",
+      "price_at_prediction": 141.9
+    },
+    {
+      "symbol": "XP",
+      "kind": "long",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 01:28:39 JST",
+      "horizon_end": "2026-12-21",
+      "category": "大きく値上がり",
+      "price_at_prediction": 19.53
+    },
+    {
+      "symbol": "NOW",
+      "kind": "long",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 01:28:39 JST",
+      "horizon_end": "2026-12-21",
+      "category": "大きく値上がり",
+      "price_at_prediction": 141.9
     }
   ]
 }
