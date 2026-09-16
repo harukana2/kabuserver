@@ -813,6 +813,97 @@ def score_long_term(row: dict, fund: dict) -> tuple[float, float]:
 
 
 # --------------------------------------------------------------------------
+# 予想カテゴリ(大きく値上がり/少し値上がり/変動なし/少し値下がり/大きく値下がり)
+# --------------------------------------------------------------------------
+#
+# 注意: これもテクニカル指標から機械的に導いたルールベースの目安であり、
+# 将来の値動きを保証するものではありません(投資助言ではありません)。
+# day: 短期(目安1〜5営業日)、long: 長期(目安1〜3ヶ月)。
+
+PREDICTION_CATEGORIES = ["大きく値上がり", "少し値上がり", "変動なし", "少し値下がり", "大きく値下がり"]
+
+
+def predict_category(row: dict, kind: str) -> str:
+    rsi14 = row.get("rsi14") or 50
+    above200 = row.get("above_sma200")
+    above50 = row.get("above_sma50")
+    above20 = row.get("above_sma20")
+    mom1 = row.get("mom_1m")
+    mom3 = row.get("mom_3m")
+    atrp = row.get("atr_pct") or 0
+    macd_up = row.get("macd_bullish_cross")
+    macd_down = row.get("macd_bearish_cross")
+
+    def _isnan(v):
+        return v is None or (isinstance(v, float) and np.isnan(v))
+
+    signals_up, signals_down = 0, 0
+    if above200 is True:
+        signals_up += 1
+    elif above200 is False:
+        signals_down += 1
+    if above50 is True:
+        signals_up += 1
+    elif above50 is False:
+        signals_down += 1
+    if above20 is True:
+        signals_up += 1
+    elif above20 is False:
+        signals_down += 1
+    if macd_up:
+        signals_up += 1
+    if macd_down:
+        signals_down += 1
+
+    mom = mom1 if kind == "day" else mom3
+    mom_strong = 6 if kind == "day" else 15
+    mom_weak = 1.5 if kind == "day" else 4
+    if not _isnan(mom):
+        if mom > mom_strong:
+            signals_up += 2
+        elif mom > mom_weak:
+            signals_up += 1
+        elif mom < -mom_strong:
+            signals_down += 2
+        elif mom < -mom_weak:
+            signals_down += 1
+
+    net = signals_up - signals_down
+
+    # 過熱感/売られすぎによる短期反転バイアス(短期予想のみ強めに反映)
+    if kind == "day":
+        if rsi14 >= 75 and net <= 1:
+            net -= 2
+        if rsi14 <= 25 and net >= -1:
+            net += 2
+
+    # ボラティリティ・モメンタムが小さい場合は「変動なし」寄りに補正
+    flat_zone = (atrp < 1.5) if kind == "day" else (_isnan(mom3) or abs(mom3) < 2)
+
+    if net >= 3:
+        category = "大きく値上がり"
+    elif net >= 1:
+        category = "少し値上がり"
+    elif net <= -3:
+        category = "大きく値下がり"
+    elif net <= -1:
+        category = "少し値下がり"
+    else:
+        category = "変動なし"
+
+    if flat_zone and category in ("少し値上がり", "少し値下がり"):
+        category = "変動なし"
+
+    return category
+
+
+def prediction_horizon_end(run_dt: datetime, kind: str) -> str:
+    """予想の的中判定を行う期限日(この日までの値動きで判定する)"""
+    delta_days = 7 if kind == "day" else 95  # 目安: 短期=5営業日強、長期=約3ヶ月
+    return (run_dt + timedelta(days=delta_days)).strftime("%Y-%m-%d")
+
+
+# --------------------------------------------------------------------------
 # 現状の説明・値動きの見立て・投資タイミングの目安(ルールベースの解説文)
 # --------------------------------------------------------------------------
 #
@@ -1083,6 +1174,8 @@ def run_scan():
             "long_situation": long_commentary["situation"],
             "long_outlook": long_commentary["outlook"],
             "long_timing": long_commentary["timing"],
+            "day_prediction": predict_category(row_d, "day"),
+            "long_prediction": predict_category(row_d, "long"),
         })
         time.sleep(0.3)
 
@@ -1106,7 +1199,7 @@ def run_scan():
         .to_dict("records")
     )
 
-    return day_trade_list, long_term_list, major_list, universe, len(cand_df)
+    return day_trade_list, long_term_list, major_list, universe, len(cand_df), history
 
 
 # --------------------------------------------------------------------------
@@ -1137,6 +1230,7 @@ def render_row_day(r):
       <td>{fmt_num(r.get('rsi14'), 0)}</td>
       <td style="color:#c0392b"><b>{fmt_num(r['day_opportunity'],0)}</b></td>
       <td style="color:#8e44ad"><b>{fmt_num(r['day_risk'],0)}</b></td>
+      <td><b>{r.get('day_prediction','—')}</b></td>
       <td>{r.get('next_earnings') or '不明'}</td>
       <td style="font-size:12px;">{r.get('day_situation','—')}</td>
       <td style="font-size:12px;">{r.get('day_outlook','—')}</td>
@@ -1167,6 +1261,7 @@ def render_row_long(r):
       <td>{r.get('sector') or '—'}</td>
       <td style="color:#c0392b"><b>{fmt_num(r['long_opportunity'],0)}</b></td>
       <td style="color:#8e44ad"><b>{fmt_num(r['long_risk'],0)}</b></td>
+      <td><b>{r.get('long_prediction','—')}</b></td>
       <td>{r.get('next_earnings') or '不明'}</td>
       <td style="font-size:12px;">{r.get('long_situation','—')}</td>
       <td style="font-size:12px;">{r.get('long_outlook','—')}</td>
@@ -1190,6 +1285,7 @@ def render_row_major(r):
       <td>{fmt_ratio(r.get('pbr'))}</td>
       <td>{fmt_pct(r.get('net_cash_ratio'))}</td>
       <td>{r.get('sector') or '—'}</td>
+      <td><b>{r.get('long_prediction','—')}</b></td>
       <td>{r.get('next_earnings') or '不明'}</td>
       <td style="font-size:12px;">{r.get('long_situation','—')}</td>
       <td style="font-size:12px;">{r.get('long_outlook','—')}</td>
@@ -1210,7 +1306,7 @@ def render_email_html(day_list, long_list, major_list, universe_size, scanned_si
       <tr style="background:#222;color:#fff;">
         <th>銘柄</th><th>現在値</th><th>前日比</th><th>3ヶ月騰落率</th><th>200日線上</th>
         <th>目標株価乖離</th><th>PER</th><th>PBR</th><th>ネットキャッシュ比率</th>
-        <th>セクター</th><th>次回決算</th>
+        <th>セクター</th><th>予想(1〜3ヶ月)</th><th>次回決算</th>
         <th>現状</th><th>値動きの見立て</th><th>投資タイミングの目安</th>
       </tr>
       {major_rows}
@@ -1248,7 +1344,7 @@ def render_email_html(day_list, long_list, major_list, universe_size, scanned_si
     <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
       <tr style="background:#222;color:#fff;">
         <th>銘柄</th><th>現在値</th><th>前日比</th><th>ATR%</th><th>相対出来高</th>
-        <th>RSI14</th><th>利益期待</th><th>リスク</th><th>次回決算</th>
+        <th>RSI14</th><th>利益期待</th><th>リスク</th><th>予想(1〜5営業日)</th><th>次回決算</th>
         <th>現状</th><th>値動きの見立て</th><th>投資タイミングの目安</th>
       </tr>
       {day_rows}
@@ -1259,7 +1355,7 @@ def render_email_html(day_list, long_list, major_list, universe_size, scanned_si
       <tr style="background:#222;color:#fff;">
         <th>銘柄</th><th>現在値</th><th>3ヶ月騰落率</th><th>200日線上</th>
         <th>目標株価乖離</th><th>PER</th><th>PBR</th><th>ネットキャッシュ比率</th>
-        <th>セクター</th><th>利益期待</th><th>リスク</th><th>次回決算</th>
+        <th>セクター</th><th>利益期待</th><th>リスク</th><th>予想(1〜3ヶ月)</th><th>次回決算</th>
         <th>現状</th><th>値動きの見立て</th><th>投資タイミングの目安</th>
       </tr>
       {long_rows}
@@ -1313,6 +1409,165 @@ def _atomic_write_json(path: str, obj) -> None:
     with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     os.replace(tmp_path, path)  # 同一ファイルシステム内でのrenameはアトミック
+
+
+# --------------------------------------------------------------------------
+# 分析タブ用データ: 銘柄ごとの株価履歴(日足/当日イントラデイ)と予想ログ
+# --------------------------------------------------------------------------
+#
+# GitHub Pages上の分析タブ(index.html)は、指定した銘柄の株価推移グラフと
+# 過去の予想・的中判定を表示するために以下のファイル群を参照する。
+# リポジトリの肥大化を避けるため、対象は「メールに実際に載った銘柄」
+# (day_trade_list + long_term_list + major_list に登場した銘柄)に限定する。
+
+HISTORY_DIR = os.path.join(DATA_DIR, "history")     # 銘柄ごとの日足終値履歴
+INTRADAY_DIR = os.path.join(DATA_DIR, "intraday")   # 銘柄ごとの当日イントラデイ履歴
+PREDICTIONS_LOG_PATH = os.path.join(DATA_DIR, "predictions_log.json")
+
+MAX_HISTORY_DAYS_KEPT = 200        # 日足履歴の保持日数(長期3ヶ月分析+バックテストに十分な余裕)
+MAX_INTRADAY_POINTS_KEPT = 200     # 当日イントラデイの保持ポイント数上限
+MAX_PREDICTIONS_LOG_KEPT = 8000    # 予想ログ全体の保持件数上限
+
+
+def _watched_symbols(day_list, long_list, major_list) -> set[str]:
+    return {
+        r.get("symbol")
+        for r in (day_list + long_list + major_list)
+        if r.get("symbol")
+    }
+
+
+def update_price_histories(history: dict, watched_symbols: set[str], run_dt: datetime) -> None:
+    """
+    日足終値履歴を銘柄ごとの data/history/<SYMBOL>.json に保存する。
+    同じ日(JST基準)の終値は、1日に何度スキャンを回しても1エントリのみ保持
+    (最新の値で上書き)する。
+    """
+    try:
+        os.makedirs(HISTORY_DIR, exist_ok=True)
+        today_str = run_dt.strftime("%Y-%m-%d")
+        for sym in watched_symbols:
+            df = history.get(sym)
+            try:
+                if df is None or df.empty or "Close" not in df.columns:
+                    continue
+                close = float(df["Close"].dropna().iloc[-1])
+                if np.isnan(close):
+                    continue
+                path = os.path.join(HISTORY_DIR, f"{sym}.json")
+                if os.path.exists(path) and os.path.getsize(path) > 0:
+                    with open(path, "r", encoding="utf-8") as f:
+                        hist = json.load(f)
+                else:
+                    hist = []
+                if hist and hist[-1]["date"] == today_str:
+                    hist[-1]["close"] = close
+                else:
+                    hist.append({"date": today_str, "close": close})
+                if MAX_HISTORY_DAYS_KEPT:
+                    hist = hist[-MAX_HISTORY_DAYS_KEPT:]
+                _atomic_write_json(path, hist)
+            except Exception as e:
+                print(f"[warn] price history 更新失敗 ({sym}): {e}")
+    except Exception as e:
+        print(f"[warn] price history 更新処理に失敗しました: {e}")
+        traceback.print_exc()
+
+
+def update_intraday_prices(day_list, long_list, major_list, run_dt: datetime) -> None:
+    """
+    当日のイントラデイ株価点を data/intraday/<SYMBOL>.json に追記する。
+    日付(JST)が変わったら自動的にリセットされる。分析タブの「1日」スケールの
+    グラフに使用する。
+    """
+    try:
+        os.makedirs(INTRADAY_DIR, exist_ok=True)
+        today_str = run_dt.strftime("%Y-%m-%d")
+        ts_str = run_dt.strftime("%H:%M")
+        latest_price = {}
+        for r in (day_list + long_list + major_list):
+            sym = r.get("symbol")
+            price = r.get("price")
+            if sym and price is not None:
+                latest_price[sym] = price  # 同一銘柄が複数リストにあれば同じ値のはず
+        for sym, price in latest_price.items():
+            try:
+                path = os.path.join(INTRADAY_DIR, f"{sym}.json")
+                if os.path.exists(path) and os.path.getsize(path) > 0:
+                    with open(path, "r", encoding="utf-8") as f:
+                        day_data = json.load(f)
+                else:
+                    day_data = {"date": today_str, "points": []}
+                if day_data.get("date") != today_str:
+                    day_data = {"date": today_str, "points": []}
+                day_data["points"].append({"t": ts_str, "price": float(price)})
+                if MAX_INTRADAY_POINTS_KEPT:
+                    day_data["points"] = day_data["points"][-MAX_INTRADAY_POINTS_KEPT:]
+                _atomic_write_json(path, day_data)
+            except Exception as e:
+                print(f"[warn] intraday 更新失敗 ({sym}): {e}")
+    except Exception as e:
+        print(f"[warn] intraday 更新処理に失敗しました: {e}")
+        traceback.print_exc()
+
+
+def append_predictions_log(day_list, long_list, major_list, run_dt: datetime) -> None:
+    """
+    「いつ・どの銘柄に・どの予想をしたか」を1つのJSONファイル
+    (data/predictions_log.json)に集約して追記する。分析タブはこのログと
+    data/history/<SYMBOL>.json の実際の終値を突き合わせて的中判定を行う。
+    同じ銘柄・同じ予想種別(day/long)・同じ日(JST)の予想は、1日に何度
+    スキャンを回しても1件のみ記録する。
+    """
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        if os.path.exists(PREDICTIONS_LOG_PATH) and os.path.getsize(PREDICTIONS_LOG_PATH) > 0:
+            with open(PREDICTIONS_LOG_PATH, "r", encoding="utf-8") as f:
+                log = json.load(f)
+        else:
+            log = {"entries": []}
+
+        made_date = run_dt.strftime("%Y-%m-%d")
+        existing_keys = {
+            (e.get("symbol"), e.get("kind"), e.get("made_date")) for e in log["entries"]
+        }
+
+        new_entries = []
+        seen_this_run = set()
+
+        def _maybe_add(r, kind, pred_field):
+            sym = r.get("symbol")
+            category = r.get(pred_field)
+            price = r.get("price")
+            if not sym or not category or price is None:
+                return
+            key = (sym, kind, made_date)
+            if key in existing_keys or key in seen_this_run:
+                return
+            seen_this_run.add(key)
+            new_entries.append({
+                "symbol": sym,
+                "kind": kind,
+                "made_date": made_date,
+                "made_at": run_dt.strftime("%Y-%m-%d %H:%M:%S JST"),
+                "horizon_end": prediction_horizon_end(run_dt, kind),
+                "category": category,
+                "price_at_prediction": price,
+            })
+
+        for r in (day_list + major_list):
+            _maybe_add(r, "day", "day_prediction")
+        for r in (long_list + major_list):
+            _maybe_add(r, "long", "long_prediction")
+
+        log["entries"].extend(_clean_records(new_entries))
+        if MAX_PREDICTIONS_LOG_KEPT:
+            log["entries"] = log["entries"][-MAX_PREDICTIONS_LOG_KEPT:]
+        _atomic_write_json(PREDICTIONS_LOG_PATH, log)
+        print(f"[info] predictions_log 追記: {len(new_entries)}件")
+    except Exception as e:
+        print(f"[warn] predictions_log 更新に失敗しました: {e}")
+        traceback.print_exc()
 
 
 def save_json_snapshot(day_list, long_list, major_list, universe_size, scanned_size) -> str | None:
@@ -1398,11 +1653,18 @@ def send_email(html_body: str) -> bool:
 
 def main():
     try:
-        day_list, long_list, major_list, universe, scanned_size = run_scan()
+        day_list, long_list, major_list, universe, scanned_size, history = run_scan()
         html = render_email_html(day_list, long_list, major_list, len(universe), scanned_size)
 
         # Web閲覧ページ(GitHub Pages)用にJSONスナップショットを保存
         save_json_snapshot(day_list, long_list, major_list, len(universe), scanned_size)
+
+        # 分析タブ用: 株価履歴・予想ログを更新(失敗してもメール送信は止めない)
+        run_dt = datetime.now(timezone(timedelta(hours=9)))
+        watched = _watched_symbols(day_list, long_list, major_list)
+        update_price_histories(history, watched, run_dt)
+        update_intraday_prices(day_list, long_list, major_list, run_dt)
+        append_predictions_log(day_list, long_list, major_list, run_dt)
 
         sent = False
         try:
