@@ -1367,6 +1367,51 @@
       "horizon_end": "2026-12-21",
       "category": "大きく値上がり",
       "price_at_prediction": 158.98
+    },
+    {
+      "symbol": "CIFR",
+      "kind": "day",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 08:24:13 JST",
+      "horizon_end": "2026-09-24",
+      "category": "変動なし",
+      "price_at_prediction": 16.72
+    },
+    {
+      "symbol": "DELL",
+      "kind": "day",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 08:24:13 JST",
+      "horizon_end": "2026-09-24",
+      "category": "大きく値上がり",
+      "price_at_prediction": 563.29
+    },
+    {
+      "symbol": "DHT",
+      "kind": "long",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 08:24:13 JST",
+      "horizon_end": "2026-12-21",
+      "category": "大きく値上がり",
+      "price_at_prediction": 23.04
+    },
+    {
+      "symbol": "LPG",
+      "kind": "long",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 08:24:13 JST",
+      "horizon_end": "2026-12-21",
+      "category": "大きく値上がり",
+      "price_at_prediction": 57.86
+    },
+    {
+      "symbol": "DELL",
+      "kind": "long",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 08:24:13 JST",
+      "horizon_end": "2026-12-21",
+      "category": "大きく値上がり",
+      "price_at_prediction": 563.29
     }
   ]
 }
