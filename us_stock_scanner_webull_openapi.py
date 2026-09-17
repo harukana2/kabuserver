@@ -2276,7 +2276,9 @@ def append_predictions_log(day_list, long_list, major_list, run_dt: datetime, ho
 #     追加で$10ぶん買い増す。
 #   - 売り: 予想が弱気(値下がり系)に転じた銘柄は、保有数量の全量をいつでも
 #     売却できる(金額上限なし)。
-#   - 端株(単元未満株)の売買は、米国市場の通常取引時間中のみ実行する。
+#   - 端株(単元未満株、$10で1株未満しか買えない/保有数量が1株未満)の売買のみ、
+#     米国市場の通常取引時間中に限る。$10で1株以上買える、または1株以上保有して
+#     いる場合は時間外でも売買する。
 #   - 実際の資金は動かさない、あくまで仮想的なシミュレーション。
 
 SIM_BULLISH = {"大きく値上がり", "少し値上がり"}
@@ -2453,38 +2455,44 @@ def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datet
                 by_symbol[sym] = r
 
         if not regular_hours:
-            print("[info] simulation: 通常取引時間外のため端株の新規売買はスキップします(既存ポジションは維持)")
-        else:
-            for sym, r in by_symbol.items():
-                price = r.get("price")
-                if not price or price <= 0:
-                    continue
-                action, kind = _sim_signal(r)
-                if action is None:
-                    continue
-                pos = positions.get(sym, {"qty": 0.0, "cost": 0.0})
+            print("[info] simulation: 通常取引時間外です(1株未満になる端株取引のみスキップします)")
 
-                if action == "buy":
-                    qty = SIM_BUY_USD_PER_ORDER / price
-                    pos["qty"] = pos.get("qty", 0.0) + qty
-                    pos["cost"] = pos.get("cost", 0.0) + SIM_BUY_USD_PER_ORDER
-                    positions[sym] = pos
-                    trades.append({
-                        "time": ts, "symbol": sym, "side": "buy", "kind": kind,
-                        "price": price, "qty": qty, "amount": SIM_BUY_USD_PER_ORDER,
-                        "prediction": r.get("day_prediction") if kind == "day" else r.get("long_prediction"),
-                    })
-                elif action == "sell" and pos.get("qty", 0) > 1e-9:
-                    qty = pos["qty"]
-                    cost = pos.get("cost", 0.0)
-                    proceeds = qty * price
-                    trades.append({
-                        "time": ts, "symbol": sym, "side": "sell", "kind": kind,
-                        "price": price, "qty": qty, "amount": proceeds,
-                        "realized_pl": proceeds - cost,
-                        "prediction": r.get("day_prediction") if kind == "day" else r.get("long_prediction"),
-                    })
-                    positions[sym] = {"qty": 0.0, "cost": 0.0}
+        for sym, r in by_symbol.items():
+            price = r.get("price")
+            if not price or price <= 0:
+                continue
+            action, kind = _sim_signal(r)
+            if action is None:
+                continue
+            pos = positions.get(sym, {"qty": 0.0, "cost": 0.0})
+
+            if action == "buy":
+                qty = SIM_BUY_USD_PER_ORDER / price
+                is_fractional = qty < 1.0  # $10で1株未満しか買えない場合のみ端株扱い
+                if is_fractional and not regular_hours:
+                    continue  # 端株の新規売買は通常取引時間中のみ
+                pos["qty"] = pos.get("qty", 0.0) + qty
+                pos["cost"] = pos.get("cost", 0.0) + SIM_BUY_USD_PER_ORDER
+                positions[sym] = pos
+                trades.append({
+                    "time": ts, "symbol": sym, "side": "buy", "kind": kind,
+                    "price": price, "qty": qty, "amount": SIM_BUY_USD_PER_ORDER,
+                    "prediction": r.get("day_prediction") if kind == "day" else r.get("long_prediction"),
+                })
+            elif action == "sell" and pos.get("qty", 0) > 1e-9:
+                qty = pos["qty"]
+                is_fractional = qty < 1.0  # 保有数量が1株未満(端株)の場合のみ制限対象
+                if is_fractional and not regular_hours:
+                    continue  # 端株の売却は通常取引時間中のみ(1株以上ならいつでも売却可)
+                cost = pos.get("cost", 0.0)
+                proceeds = qty * price
+                trades.append({
+                    "time": ts, "symbol": sym, "side": "sell", "kind": kind,
+                    "price": price, "qty": qty, "amount": proceeds,
+                    "realized_pl": proceeds - cost,
+                    "prediction": r.get("day_prediction") if kind == "day" else r.get("long_prediction"),
+                })
+                positions[sym] = {"qty": 0.0, "cost": 0.0}
 
         # 数量0のポジションは掃除する
         positions = {s: p for s, p in positions.items() if (p.get("qty") or 0) > 1e-9}
