@@ -1412,6 +1412,51 @@
       "horizon_end": "2026-12-21",
       "category": "大きく値上がり",
       "price_at_prediction": 563.29
+    },
+    {
+      "symbol": "AXTI",
+      "kind": "day",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 18:19:15 JST",
+      "horizon_end": "2026-09-24",
+      "category": "少し値上がり",
+      "price_at_prediction": 64.3
+    },
+    {
+      "symbol": "VLO",
+      "kind": "day",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 18:19:15 JST",
+      "horizon_end": "2026-09-24",
+      "category": "大きく値上がり",
+      "price_at_prediction": 403.28
+    },
+    {
+      "symbol": "VTRS",
+      "kind": "day",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 18:19:15 JST",
+      "horizon_end": "2026-09-24",
+      "category": "大きく値上がり",
+      "price_at_prediction": 17.02
+    },
+    {
+      "symbol": "VLO",
+      "kind": "long",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 18:19:15 JST",
+      "horizon_end": "2026-12-21",
+      "category": "大きく値上がり",
+      "price_at_prediction": 403.28
+    },
+    {
+      "symbol": "VTRS",
+      "kind": "long",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 18:19:15 JST",
+      "horizon_end": "2026-12-21",
+      "category": "大きく値上がり",
+      "price_at_prediction": 17.02
     }
   ]
 }
