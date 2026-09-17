@@ -12824,5 +12824,1795 @@
       "net_cash_ratio": 6.479734746871221
     },
     "no_earnings_at": 1789638977.6412952
+  },
+  "BNC": {
+    "fetched_at": 1789679294.0146494,
+    "data": {
+      "target_mean": null,
+      "market_cap": 223162256,
+      "next_earnings": "2026-12-11",
+      "recommendation": "none",
+      "sector": "Industrials",
+      "per": 0.013550339,
+      "pbr": 0.7710912,
+      "total_cash": 7084000,
+      "total_debt": 17419000,
+      "net_cash_ratio": -4.6311594914150715
+    }
+  },
+  "CRWV": {
+    "fetched_at": 1789679294.1305153,
+    "data": {
+      "target_mean": 144.44118,
+      "market_cap": 44056739840,
+      "next_earnings": "2026-11-11",
+      "recommendation": "buy",
+      "sector": "Technology",
+      "per": -40.99353,
+      "pbr": 8.760693,
+      "total_cash": 5538999808,
+      "total_debt": 51612999680,
+      "net_cash_ratio": -104.57877736601947
+    }
+  },
+  "ABSI": {
+    "fetched_at": 1789679294.1366873,
+    "data": {
+      "target_mean": 14.4,
+      "market_cap": 1590861952,
+      "next_earnings": "2026-11-16",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -13.73008,
+      "pbr": 6.459931,
+      "total_cash": 201142000,
+      "total_debt": 3829000,
+      "net_cash_ratio": 12.402898928592894
+    }
+  },
+  "MGNI": {
+    "fetched_at": 1789679294.136197,
+    "data": {
+      "target_mean": 28.6,
+      "market_cap": 3675961088,
+      "next_earnings": "2026-11-04",
+      "recommendation": "strong_buy",
+      "sector": "Communication Services",
+      "per": 23.3,
+      "pbr": 3.9249616,
+      "total_cash": 332615008,
+      "total_debt": 416977984,
+      "net_cash_ratio": -2.2949909963791217
+    }
+  },
+  "QSR": {
+    "fetched_at": 1789679294.1299822,
+    "data": {
+      "target_mean": 86.0,
+      "market_cap": 33574952960,
+      "next_earnings": "2026-10-29",
+      "recommendation": "buy",
+      "sector": "Consumer Cyclical",
+      "per": 18.414574,
+      "pbr": 6.6476192,
+      "total_cash": 1102000000,
+      "total_debt": 15651000320,
+      "net_cash_ratio": -43.33289859656143
+    }
+  },
+  "MTZ": {
+    "fetched_at": 1789679294.1308503,
+    "data": {
+      "target_mean": 416.95,
+      "market_cap": 16683352064,
+      "next_earnings": "2026-10-29",
+      "recommendation": "strong_buy",
+      "sector": "Industrials",
+      "per": 33.133972,
+      "pbr": 4.664242,
+      "total_cash": 315640992,
+      "total_debt": 3235450880,
+      "net_cash_ratio": -17.501338320974966
+    }
+  },
+  "JXN": {
+    "fetched_at": 1789679294.5709808,
+    "data": {
+      "target_mean": 146.0,
+      "market_cap": 8762744832,
+      "next_earnings": "2026-11-03",
+      "recommendation": "none",
+      "sector": "Financial Services",
+      "per": 143.75557,
+      "pbr": 0.93560404,
+      "total_cash": 5985999872,
+      "total_debt": 5720000000,
+      "net_cash_ratio": 3.035577060610225
+    }
+  },
+  "ELMT": {
+    "fetched_at": 1789679294.5806959,
+    "data": {
+      "target_mean": 23.0,
+      "market_cap": 669195136,
+      "next_earnings": "2026-11-16",
+      "recommendation": "strong_buy",
+      "sector": "Industrials",
+      "per": 35.246178,
+      "pbr": 3.5682962,
+      "total_cash": 71045000,
+      "total_debt": 22852000,
+      "net_cash_ratio": 7.2016363251032365
+    }
+  },
+  "HELP": {
+    "fetched_at": 1789679294.574929,
+    "data": {
+      "target_mean": 41.02872,
+      "market_cap": 1024436736,
+      "next_earnings": "2026-11-12",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -7.686192,
+      "pbr": 261.56512,
+      "total_cash": 166364992,
+      "total_debt": 0,
+      "net_cash_ratio": 16.239655037126667
+    }
+  },
+  "LAD": {
+    "fetched_at": 1789679294.579501,
+    "data": {
+      "target_mean": 450.8,
+      "market_cap": 7071528448,
+      "next_earnings": "2026-10-21",
+      "recommendation": "buy",
+      "sector": "Consumer Cyclical",
+      "per": 10.655184,
+      "pbr": 1.1054105,
+      "total_cash": 119100000,
+      "total_debt": 16563300352,
+      "net_cash_ratio": -232.54096300285437
+    }
+  },
+  "MBLY": {
+    "fetched_at": 1789679294.7198262,
+    "data": {
+      "target_mean": 11.95625,
+      "market_cap": 6835508224,
+      "next_earnings": "2026-10-29",
+      "recommendation": "buy",
+      "sector": "Consumer Cyclical",
+      "per": 16.559225,
+      "pbr": 0.82259053,
+      "total_cash": 1443000064,
+      "total_debt": 0,
+      "net_cash_ratio": 21.110355173497044
+    }
+  },
+  "NMRK": {
+    "fetched_at": 1789679294.7310677,
+    "data": {
+      "target_mean": 19.75,
+      "market_cap": 3385921792,
+      "next_earnings": "2026-10-29",
+      "recommendation": "none",
+      "sector": "Real Estate",
+      "per": 17.293749,
+      "pbr": 1.7389392,
+      "total_cash": 259700000,
+      "total_debt": 2271098112,
+      "net_cash_ratio": -59.404742210891555
+    }
+  },
+  "NVST": {
+    "fetched_at": 1789679294.8197684,
+    "data": {
+      "target_mean": 30.78571,
+      "market_cap": 3805033728,
+      "next_earnings": "2026-10-28",
+      "recommendation": "buy",
+      "sector": "Healthcare",
+      "per": 40.84483,
+      "pbr": 1.2367527,
+      "total_cash": 1125600000,
+      "total_debt": 1588000000,
+      "net_cash_ratio": -12.15232329209987
+    }
+  },
+  "CZR": {
+    "fetched_at": 1789679294.727005,
+    "data": {
+      "target_mean": 31.26667,
+      "market_cap": 6046074368,
+      "next_earnings": "2026-10-27",
+      "recommendation": "hold",
+      "sector": "Consumer Cyclical",
+      "per": 41.01862,
+      "pbr": 1.7933993,
+      "total_cash": 965000000,
+      "total_debt": 25924999168,
+      "net_cash_ratio": -412.82984046814823
+    }
+  },
+  "HLN": {
+    "fetched_at": 1789679294.5759258,
+    "data": {
+      "target_mean": 11.994,
+      "market_cap": 41161695232,
+      "next_earnings": "2027-02-24",
+      "recommendation": "none",
+      "sector": "Healthcare",
+      "per": 19.10204,
+      "pbr": 1.8839482,
+      "total_cash": 826000000,
+      "total_debt": 8252000256,
+      "net_cash_ratio": -18.041045720164764
+    }
+  },
+  "HL": {
+    "fetched_at": 1789679294.9666536,
+    "data": {
+      "target_mean": 23.375,
+      "market_cap": 12716705792,
+      "next_earnings": "2026-11-05",
+      "recommendation": "buy",
+      "sector": "Basic Materials",
+      "per": 22.843372,
+      "pbr": 4.756648,
+      "total_cash": 485340000,
+      "total_debt": 21478000,
+      "net_cash_ratio": 3.6476585020297687
+    }
+  },
+  "XPON": {
+    "fetched_at": 1789679294.583849,
+    "data": {
+      "target_mean": null,
+      "market_cap": 4842210,
+      "next_earnings": null,
+      "recommendation": "none",
+      "sector": "Industrials",
+      "per": -0.42333332,
+      "pbr": 7.6047907,
+      "total_cash": 1540348,
+      "total_debt": 701718,
+      "net_cash_ratio": 17.319157987778308
+    },
+    "no_earnings_at": 1789679294.583849
+  },
+  "CALX": {
+    "fetched_at": 1789679294.7814152,
+    "data": {
+      "target_mean": 62.33333,
+      "market_cap": 2212554496,
+      "next_earnings": "2026-10-26",
+      "recommendation": "buy",
+      "sector": "Technology",
+      "per": 46.236843,
+      "pbr": 3.1160767,
+      "total_cash": 194302000,
+      "total_debt": 13980000,
+      "net_cash_ratio": 8.149946151654019
+    }
+  },
+  "NVAX": {
+    "fetched_at": 1789679295.0224993,
+    "data": {
+      "target_mean": 14.00222,
+      "market_cap": 1649457280,
+      "next_earnings": "2026-11-05",
+      "recommendation": "buy",
+      "sector": "Healthcare",
+      "per": -16.289032,
+      "pbr": -8.643043,
+      "total_cash": 719340032,
+      "total_debt": 297319008,
+      "net_cash_ratio": 25.58544735393208
+    }
+  },
+  "QMCO": {
+    "fetched_at": 1789679295.1611536,
+    "data": {
+      "target_mean": 26.5,
+      "market_cap": 982885440,
+      "next_earnings": "2026-11-09",
+      "recommendation": "strong_buy",
+      "sector": "Technology",
+      "per": 29.690477,
+      "pbr": -35.275814,
+      "total_cash": 54449000,
+      "total_debt": 8856000,
+      "net_cash_ratio": 4.638689123322449
+    }
+  },
+  "IBRX": {
+    "fetched_at": 1789679295.1288478,
+    "data": {
+      "target_mean": 12.75,
+      "market_cap": 8966214656,
+      "next_earnings": "2026-11-03",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -66.78771,
+      "pbr": -8.511066,
+      "total_cash": 357371008,
+      "total_debt": 1228401024,
+      "net_cash_ratio": -9.714579110785902
+    }
+  },
+  "NG": {
+    "fetched_at": 1789679295.2613368,
+    "data": {
+      "target_mean": 13.2505045,
+      "market_cap": 3260139776,
+      "next_earnings": "2026-09-30",
+      "recommendation": "buy",
+      "sector": "Basic Materials",
+      "per": -31.802526,
+      "pbr": 7.7395835,
+      "total_cash": 371428992,
+      "total_debt": 174328992,
+      "net_cash_ratio": 6.045753051785716
+    }
+  },
+  "BROS": {
+    "fetched_at": 1789679295.3003254,
+    "data": {
+      "target_mean": 76.84,
+      "market_cap": 7043920896,
+      "next_earnings": "2026-11-04",
+      "recommendation": "strong_buy",
+      "sector": "Consumer Cyclical",
+      "per": 55.777775,
+      "pbr": 6.942092,
+      "total_cash": 269072000,
+      "total_debt": 1207328000,
+      "net_cash_ratio": -13.320081441187156
+    }
+  },
+  "CMPS": {
+    "fetched_at": 1789679295.2438076,
+    "data": {
+      "target_mean": 23.75,
+      "market_cap": 2077152256,
+      "next_earnings": "2026-11-03",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -10.46514,
+      "pbr": 24.077045,
+      "total_cash": 433295008,
+      "total_debt": 54628000,
+      "net_cash_ratio": 18.230103590441853
+    }
+  },
+  "DKNG": {
+    "fetched_at": 1789679295.3042233,
+    "data": {
+      "target_mean": 35.20139,
+      "market_cap": 11155321856,
+      "next_earnings": "2026-11-05",
+      "recommendation": "buy",
+      "sector": "Consumer Cyclical",
+      "per": 13.6730385,
+      "pbr": 19.57317,
+      "total_cash": 983881984,
+      "total_debt": 1916008960,
+      "net_cash_ratio": -8.355894953390756
+    }
+  },
+  "GME": {
+    "fetched_at": 1789679295.3590884,
+    "data": {
+      "target_mean": null,
+      "market_cap": 11487488000,
+      "next_earnings": "2026-12-08",
+      "recommendation": "strong_buy",
+      "sector": "Consumer Cyclical",
+      "per": 14.980264,
+      "pbr": 1.7488478,
+      "total_cash": 5060299776,
+      "total_debt": 4333199872,
+      "net_cash_ratio": 6.329494350723152
+    }
+  },
+  "NHI": {
+    "fetched_at": 1789679295.352657,
+    "data": {
+      "target_mean": 81.875,
+      "market_cap": 3399915264,
+      "next_earnings": "2026-11-05",
+      "recommendation": "buy",
+      "sector": "Real Estate",
+      "per": 20.00867,
+      "pbr": 2.1638434,
+      "total_cash": 30388000,
+      "total_debt": 1278265984,
+      "net_cash_ratio": -36.70320837737208
+    }
+  },
+  "NBIS": {
+    "fetched_at": 1789679295.4445102,
+    "data": {
+      "target_mean": 290.70587,
+      "market_cap": 55347269632,
+      "next_earnings": "2026-11-10",
+      "recommendation": "buy",
+      "sector": "Communication Services",
+      "per": -66.399635,
+      "pbr": 5.778856,
+      "total_cash": 8042100224,
+      "total_debt": 10195300352,
+      "net_cash_ratio": -3.8903457068731164
+    }
+  },
+  "SMCIP": {
+    "fetched_at": 1789679294.866596,
+    "data": {
+      "target_mean": null,
+      "market_cap": null,
+      "next_earnings": null,
+      "recommendation": "none",
+      "sector": "Technology",
+      "per": null,
+      "pbr": 4.330194,
+      "total_cash": 7544584192,
+      "total_debt": 9259886592,
+      "net_cash_ratio": null
+    },
+    "no_earnings_at": 1789679294.866596
+  },
+  "TH": {
+    "fetched_at": 1789679295.4205022,
+    "data": {
+      "target_mean": 25.2,
+      "market_cap": 2033023232,
+      "next_earnings": "2026-11-05",
+      "recommendation": "strong_buy",
+      "sector": "Industrials",
+      "per": 22.737976,
+      "pbr": 5.624492,
+      "total_cash": 6068000,
+      "total_debt": 48280000,
+      "net_cash_ratio": -2.0763166566706506
+    }
+  },
+  "GENI": {
+    "fetched_at": 1789679295.4473336,
+    "data": {
+      "target_mean": 11.025,
+      "market_cap": 1734222720,
+      "next_earnings": "2026-11-03",
+      "recommendation": "strong_buy",
+      "sector": "Communication Services",
+      "per": 6.0560746,
+      "pbr": 2.5352113,
+      "total_cash": 155076000,
+      "total_debt": 821014976,
+      "net_cash_ratio": -38.39985304771004
+    }
+  },
+  "CTRI": {
+    "fetched_at": 1789679295.455669,
+    "data": {
+      "target_mean": 29.66667,
+      "market_cap": 1931423232,
+      "next_earnings": "2026-11-04",
+      "recommendation": "buy",
+      "sector": "Utilities",
+      "per": 57.969692,
+      "pbr": 2.2226093,
+      "total_cash": 40458000,
+      "total_debt": 947209024,
+      "net_cash_ratio": -46.94729818803381
+    }
+  },
+  "SEI": {
+    "fetched_at": 1789679295.5294347,
+    "data": {
+      "target_mean": 96.91429,
+      "market_cap": 6965356544,
+      "next_earnings": "2026-11-02",
+      "recommendation": "strong_buy",
+      "sector": "Energy",
+      "per": 87.620255,
+      "pbr": 4.82067,
+      "total_cash": 824100992,
+      "total_debt": 2514638080,
+      "net_cash_ratio": -24.270646840846055
+    }
+  },
+  "Z": {
+    "fetched_at": 1789679295.6389658,
+    "data": {
+      "target_mean": 46.0,
+      "market_cap": 6768736256,
+      "next_earnings": "2026-10-29",
+      "recommendation": "none",
+      "sector": "Communication Services",
+      "per": 130.86957,
+      "pbr": 1.4818826,
+      "total_cash": 698000000,
+      "total_debt": 558000000,
+      "net_cash_ratio": 2.0683329162943824
+    }
+  },
+  "HAPN": {
+    "fetched_at": 1789679295.6380587,
+    "data": {
+      "target_mean": 24.77778,
+      "market_cap": 1864984576,
+      "next_earnings": "2026-10-21",
+      "recommendation": "strong_buy",
+      "sector": "Financial Services",
+      "per": 9.676647,
+      "pbr": 1.18981,
+      "total_cash": 912766976,
+      "total_debt": 11369000,
+      "net_cash_ratio": 48.33273087616141
+    }
+  },
+  "BEAM": {
+    "fetched_at": 1789679295.6423137,
+    "data": {
+      "target_mean": 52.15385,
+      "market_cap": 2548106752,
+      "next_earnings": "2026-11-03",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -5.2031374,
+      "pbr": 2.308844,
+      "total_cash": 1152926976,
+      "total_debt": 247358000,
+      "net_cash_ratio": 35.53889472209993
+    }
+  },
+  "GT": {
+    "fetched_at": 1789679295.620945,
+    "data": {
+      "target_mean": 7.45714,
+      "market_cap": 1482678656,
+      "next_earnings": "2026-11-03",
+      "recommendation": "hold",
+      "sector": "Consumer Cyclical",
+      "per": 9.128778,
+      "pbr": 0.52183604,
+      "total_cash": 861000000,
+      "total_debt": 8213000192,
+      "net_cash_ratio": -495.85931261965914
+    }
+  },
+  "DOCN": {
+    "fetched_at": 1789679295.6404772,
+    "data": {
+      "target_mean": 175.2,
+      "market_cap": 15546437632,
+      "next_earnings": "2026-11-04",
+      "recommendation": "buy",
+      "sector": "Technology",
+      "per": 60.44545,
+      "pbr": 15.002255,
+      "total_cash": 767025984,
+      "total_debt": 1977859968,
+      "net_cash_ratio": -7.788497999745489
+    }
+  },
+  "AGCO": {
+    "fetched_at": 1789679295.507995,
+    "data": {
+      "target_mean": 124.46667,
+      "market_cap": 8513757184,
+      "next_earnings": "2026-10-30",
+      "recommendation": "buy",
+      "sector": "Industrials",
+      "per": 16.814661,
+      "pbr": 2.0855348,
+      "total_cash": 573400000,
+      "total_debt": 2888499968,
+      "net_cash_ratio": -27.192459427323033
+    }
+  },
+  "SDOT": {
+    "fetched_at": 1789679294.9704604,
+    "data": {
+      "target_mean": null,
+      "market_cap": 17705256,
+      "next_earnings": null,
+      "recommendation": "none",
+      "sector": "Consumer Defensive",
+      "per": 5.070833,
+      "pbr": -1.3956422,
+      "total_cash": 124000,
+      "total_debt": 9361000,
+      "net_cash_ratio": -52.170948559004174
+    },
+    "no_earnings_at": 1789679294.9704604
+  },
+  "ITT": {
+    "fetched_at": 1789679295.7401187,
+    "data": {
+      "target_mean": 258.3846,
+      "market_cap": 18220414976,
+      "next_earnings": "2026-10-27",
+      "recommendation": "strong_buy",
+      "sector": "Industrials",
+      "per": 39.766666,
+      "pbr": 3.7769337,
+      "total_cash": 590800000,
+      "total_debt": 3834700032,
+      "net_cash_ratio": -17.803656153127566
+    }
+  },
+  "CIGI": {
+    "fetched_at": 1789679295.7905662,
+    "data": {
+      "target_mean": 139.22221,
+      "market_cap": 4536996864,
+      "next_earnings": "2026-11-03",
+      "recommendation": "buy",
+      "sector": "Real Estate",
+      "per": 42.075832,
+      "pbr": 2.9391513,
+      "total_cash": 335217984,
+      "total_debt": 3312018944,
+      "net_cash_ratio": -65.61170415655812
+    }
+  },
+  "GFL": {
+    "fetched_at": 1789679295.7895427,
+    "data": {
+      "target_mean": 51.602283,
+      "market_cap": 15601289216,
+      "next_earnings": "2026-11-04",
+      "recommendation": "buy",
+      "sector": "Industrials",
+      "per": 40.91707,
+      "pbr": 2.9523304,
+      "total_cash": 192100000,
+      "total_debt": 10142300160,
+      "net_cash_ratio": -63.77806360897091
+    }
+  },
+  "DINO": {
+    "fetched_at": 1789679295.7935476,
+    "data": {
+      "target_mean": 102.33333,
+      "market_cap": 20733153280,
+      "next_earnings": "2026-10-29",
+      "recommendation": "hold",
+      "sector": "Energy",
+      "per": 11.117255,
+      "pbr": 2.0158684,
+      "total_cash": 2262000128,
+      "total_debt": 3339000064,
+      "net_cash_ratio": -5.194578564365873
+    }
+  },
+  "OKLO": {
+    "fetched_at": 1789679295.7855458,
+    "data": {
+      "target_mean": 78.69048,
+      "market_cap": 7375600128,
+      "next_earnings": "2026-11-10",
+      "recommendation": "buy",
+      "sector": "Utilities",
+      "per": -39.20774,
+      "pbr": 2.2418861,
+      "total_cash": 2465157888,
+      "total_debt": 4146000,
+      "net_cash_ratio": 33.366937541221326
+    }
+  },
+  "DK": {
+    "fetched_at": 1789679295.7864997,
+    "data": {
+      "target_mean": 75.0,
+      "market_cap": 4993484288,
+      "next_earnings": "2026-11-06",
+      "recommendation": "buy",
+      "sector": "Energy",
+      "per": 22.220709,
+      "pbr": 26.764032,
+      "total_cash": 628600000,
+      "total_debt": 3433700096,
+      "net_cash_ratio": -56.17520621304496
+    }
+  },
+  "SARO": {
+    "fetched_at": 1789679295.900189,
+    "data": {
+      "target_mean": 35.81429,
+      "market_cap": 7458924032,
+      "next_earnings": "2026-11-10",
+      "recommendation": "buy",
+      "sector": "Industrials",
+      "per": 23.237114,
+      "pbr": 2.6611571,
+      "total_cash": 179063008,
+      "total_debt": 2566457088,
+      "net_cash_ratio": -32.00721806198441
+    }
+  },
+  "NTRA": {
+    "fetched_at": 1789679295.7877736,
+    "data": {
+      "target_mean": 344.32608,
+      "market_cap": 52801454080,
+      "next_earnings": "2026-11-05",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -3559.518,
+      "pbr": 28.88197,
+      "total_cash": 1091501952,
+      "total_debt": 238488000,
+      "net_cash_ratio": 1.6155122370448174
+    }
+  },
+  "NUVB": {
+    "fetched_at": 1789679295.9865956,
+    "data": {
+      "target_mean": 13.1,
+      "market_cap": 2131318016,
+      "next_earnings": "2026-11-02",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -404.6667,
+      "pbr": 8.360882,
+      "total_cash": 660956032,
+      "total_debt": 416263008,
+      "net_cash_ratio": 11.480831211629
+    }
+  },
+  "CRSP": {
+    "fetched_at": 1789679295.9821465,
+    "data": {
+      "target_mean": 87.55556,
+      "market_cap": 5542906368,
+      "next_earnings": "2026-11-09",
+      "recommendation": "buy",
+      "sector": "Healthcare",
+      "per": -16.391123,
+      "pbr": 3.1725607,
+      "total_cash": 2364352000,
+      "total_debt": 783747968,
+      "net_cash_ratio": 28.5157988798991
+    }
+  },
+  "XENE": {
+    "fetched_at": 1789679295.990172,
+    "data": {
+      "target_mean": 81.21471,
+      "market_cap": 5553798656,
+      "next_earnings": "2026-11-02",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -11.949958,
+      "pbr": 4.466163,
+      "total_cash": 930686016,
+      "total_debt": 6418000,
+      "net_cash_ratio": 16.64208721361324
+    }
+  },
+  "BILI": {
+    "fetched_at": 1789679295.988599,
+    "data": {
+      "target_mean": 26.853731,
+      "market_cap": 5931794944,
+      "next_earnings": "2026-11-12",
+      "recommendation": "strong_buy",
+      "sector": "Communication Services",
+      "per": 26.666664,
+      "pbr": 2.5352912,
+      "total_cash": 24299706368,
+      "total_debt": 9514290176,
+      "net_cash_ratio": 249.257034870287
+    }
+  },
+  "HUT": {
+    "fetched_at": 1789679295.993563,
+    "data": {
+      "target_mean": 162.47368,
+      "market_cap": 11215379456,
+      "next_earnings": "2026-11-04",
+      "recommendation": "strong_buy",
+      "sector": "Financial Services",
+      "per": -17.52335,
+      "pbr": 7.770282,
+      "total_cash": 233579008,
+      "total_debt": 7668843008,
+      "net_cash_ratio": -66.29525134811452
+    }
+  },
+  "NTLA": {
+    "fetched_at": 1789679296.047135,
+    "data": {
+      "target_mean": 24.0,
+      "market_cap": 1717953280,
+      "next_earnings": "2026-11-05",
+      "recommendation": "buy",
+      "sector": "Healthcare",
+      "per": -4.7171445,
+      "pbr": 2.3590534,
+      "total_cash": 437759008,
+      "total_debt": 73410000,
+      "net_cash_ratio": 21.208318773372
+    }
+  },
+  "UGP": {
+    "fetched_at": 1789679296.1287048,
+    "data": {
+      "target_mean": 7.57,
+      "market_cap": 8077399552,
+      "next_earnings": "2026-11-11",
+      "recommendation": "buy",
+      "sector": "Energy",
+      "per": 11.84375,
+      "pbr": 2.502717,
+      "total_cash": 9250765824,
+      "total_debt": 19563366400,
+      "net_cash_ratio": -127.672284992347
+    }
+  },
+  "ABCL": {
+    "fetched_at": 1789679296.0479844,
+    "data": {
+      "target_mean": 17.125,
+      "market_cap": 4125122816,
+      "next_earnings": "2026-11-05",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -17.804195,
+      "pbr": 4.353625,
+      "total_cash": 540104000,
+      "total_debt": 135616992,
+      "net_cash_ratio": 9.805453705066123
+    }
+  },
+  "REAL": {
+    "fetched_at": 1789679296.1298623,
+    "data": {
+      "target_mean": 18.0,
+      "market_cap": 1151008768,
+      "next_earnings": "2026-11-09",
+      "recommendation": "strong_buy",
+      "sector": "Consumer Cyclical",
+      "per": 32.34188,
+      "pbr": -3.0466988,
+      "total_cash": 119132000,
+      "total_debt": 463308000,
+      "net_cash_ratio": -29.902118000199284
+    }
+  },
+  "CLDX": {
+    "fetched_at": 1789679296.1318402,
+    "data": {
+      "target_mean": 59.07143,
+      "market_cap": 3061081344,
+      "next_earnings": "2026-11-09",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -9.222455,
+      "pbr": 4.282105,
+      "total_cash": 717587008,
+      "total_debt": 4904000,
+      "net_cash_ratio": 23.282066953134848
+    }
+  },
+  "KVYO": {
+    "fetched_at": 1789679296.1816454,
+    "data": {
+      "target_mean": 26.65,
+      "market_cap": 4518624256,
+      "next_earnings": "2026-11-04",
+      "recommendation": "strong_buy",
+      "sector": "Technology",
+      "per": 529.0,
+      "pbr": 4.7429767,
+      "total_cash": 832638976,
+      "total_debt": 113925000,
+      "net_cash_ratio": 15.905592837148705
+    }
+  },
+  "NKTR": {
+    "fetched_at": 1789679296.1871371,
+    "data": {
+      "target_mean": 144.4,
+      "market_cap": 2334014976,
+      "next_earnings": "2026-11-12",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -6.303947,
+      "pbr": 2.5834246,
+      "total_cash": 684340992,
+      "total_debt": 135934000,
+      "net_cash_ratio": 23.49629276757477
+    }
+  },
+  "BLLN": {
+    "fetched_at": 1789679296.2983618,
+    "data": {
+      "target_mean": 119.75,
+      "market_cap": 5222189568,
+      "next_earnings": "2026-11-05",
+      "recommendation": "none",
+      "sector": "Healthcare",
+      "per": 155.87325,
+      "pbr": 9.653699,
+      "total_cash": 548627968,
+      "total_debt": 143920992,
+      "net_cash_ratio": 7.749756509796621
+    }
+  },
+  "ESAB": {
+    "fetched_at": 1789679296.2377756,
+    "data": {
+      "target_mean": 128.72726,
+      "market_cap": 4144727552,
+      "next_earnings": "2026-10-29",
+      "recommendation": "strong_buy",
+      "sector": "Industrials",
+      "per": 20.899685,
+      "pbr": 1.7506039,
+      "total_cash": 217491008,
+      "total_debt": 2539496960,
+      "net_cash_ratio": -56.02312631814696
+    }
+  },
+  "FMC": {
+    "fetched_at": 1789679296.315683,
+    "data": {
+      "target_mean": 13.575,
+      "market_cap": 1277313792,
+      "next_earnings": "2026-10-28",
+      "recommendation": "buy",
+      "sector": "Basic Materials",
+      "per": 6.2876797,
+      "pbr": 0.7803534,
+      "total_cash": 476600000,
+      "total_debt": 4402699776,
+      "net_cash_ratio": -307.37159502932855
+    }
+  },
+  "MXL": {
+    "fetched_at": 1789679296.282859,
+    "data": {
+      "target_mean": 94.54545,
+      "market_cap": 6801082368,
+      "next_earnings": "2026-10-22",
+      "recommendation": "buy",
+      "sector": "Technology",
+      "per": 28.698263,
+      "pbr": 14.027309,
+      "total_cash": 64814000,
+      "total_debt": 148196992,
+      "net_cash_ratio": -1.2260253219741626
+    }
+  },
+  "CAR": {
+    "fetched_at": 1789679296.3277273,
+    "data": {
+      "target_mean": 128.57143,
+      "market_cap": 4070939648,
+      "next_earnings": "2026-10-27",
+      "recommendation": "hold",
+      "sector": "Industrials",
+      "per": 19.06082,
+      "pbr": -1.2007043,
+      "total_cash": 558000000,
+      "total_debt": 29124999168,
+      "net_cash_ratio": -701.7298618522777
+    }
+  },
+  "S": {
+    "fetched_at": 1789679295.9416816,
+    "data": {
+      "target_mean": 24.38333,
+      "market_cap": 8071259136,
+      "next_earnings": "2026-12-03",
+      "recommendation": "buy",
+      "sector": "Technology",
+      "per": 50.216545,
+      "pbr": 5.539895,
+      "total_cash": 655248000,
+      "total_debt": 0,
+      "net_cash_ratio": 8.118287233244892
+    }
+  },
+  "ARM": {
+    "fetched_at": 1789679296.3794556,
+    "data": {
+      "target_mean": 288.705,
+      "market_cap": 282912817152,
+      "next_earnings": "2026-11-04",
+      "recommendation": "buy",
+      "sector": "Technology",
+      "per": 270.30612,
+      "pbr": 32.780594,
+      "total_cash": 3888000000,
+      "total_debt": 485000000,
+      "net_cash_ratio": 1.2028440543122079
+    }
+  },
+  "CLSK": {
+    "fetched_at": 1789679296.529744,
+    "data": {
+      "target_mean": 23.80769,
+      "market_cap": 3428507904,
+      "next_earnings": "2026-11-24",
+      "recommendation": "strong_buy",
+      "sector": "Financial Services",
+      "per": -8.711256,
+      "pbr": 4.5025296,
+      "total_cash": 202627008,
+      "total_debt": 1786919936,
+      "net_cash_ratio": -46.2093999010947
+    }
+  },
+  "ZG": {
+    "fetched_at": 1789679296.5284805,
+    "data": {
+      "target_mean": 47.22727,
+      "market_cap": 6894666240,
+      "next_earnings": "2026-10-29",
+      "recommendation": "buy",
+      "sector": "Communication Services",
+      "per": 133.30435,
+      "pbr": 1.5934724,
+      "total_cash": 698000000,
+      "total_debt": 558000000,
+      "net_cash_ratio": 2.030555144029713
+    }
+  },
+  "VERA": {
+    "fetched_at": 1789679296.540853,
+    "data": {
+      "target_mean": 77.5,
+      "market_cap": 2469610496,
+      "next_earnings": "2026-11-05",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -7.83972,
+      "pbr": 6.0472918,
+      "total_cash": 499160992,
+      "total_debt": 76905000,
+      "net_cash_ratio": 17.098080554966995
+    }
+  },
+  "CWK": {
+    "fetched_at": 1789679296.5292888,
+    "data": {
+      "target_mean": 17.72727,
+      "market_cap": 2931574272,
+      "next_earnings": "2026-10-29",
+      "recommendation": "buy",
+      "sector": "Real Estate",
+      "per": 43.068966,
+      "pbr": 1.4487878,
+      "total_cash": 500500000,
+      "total_debt": 3029799936,
+      "net_cash_ratio": -86.27787329687685
+    }
+  },
+  "BHVN": {
+    "fetched_at": 1789679296.527547,
+    "data": {
+      "target_mean": 21.26667,
+      "market_cap": 2097998080,
+      "next_earnings": "2026-11-09",
+      "recommendation": "buy",
+      "sector": "Healthcare",
+      "per": -7.4201493,
+      "pbr": 171.48149,
+      "total_cash": 267866000,
+      "total_debt": 297035008,
+      "net_cash_ratio": -1.390325771890125
+    }
+  },
+  "RIOT": {
+    "fetched_at": 1789679296.5340624,
+    "data": {
+      "target_mean": 32.40286,
+      "market_cap": 8210665472,
+      "next_earnings": "2026-10-29",
+      "recommendation": "none",
+      "sector": "Financial Services",
+      "per": -23.398817,
+      "pbr": 3.7724135,
+      "total_cash": 471383008,
+      "total_debt": 877795008,
+      "net_cash_ratio": -4.949805851741806
+    }
+  },
+  "IRON": {
+    "fetched_at": 1789679296.618606,
+    "data": {
+      "target_mean": 103.16667,
+      "market_cap": 2656016896,
+      "next_earnings": "2026-11-05",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -9.771187,
+      "pbr": 4.1181026,
+      "total_cash": 717745984,
+      "total_debt": 60862000,
+      "net_cash_ratio": 24.731920380072765
+    }
+  },
+  "ESQ": {
+    "fetched_at": 1789679296.6877213,
+    "data": {
+      "target_mean": 130.0,
+      "market_cap": 1496852736,
+      "next_earnings": "2026-10-22",
+      "recommendation": "none",
+      "sector": "Financial Services",
+      "per": 20.405941,
+      "pbr": 3.263658,
+      "total_cash": 242183008,
+      "total_debt": 2171000,
+      "net_cash_ratio": 16.0344436181062
+    }
+  },
+  "IMVT": {
+    "fetched_at": 1789679296.688466,
+    "data": {
+      "target_mean": 48.875,
+      "market_cap": 7776709120,
+      "next_earnings": "2026-11-09",
+      "recommendation": "none",
+      "sector": "Healthcare",
+      "per": -13.689914,
+      "pbr": 10.56101,
+      "total_cash": 797798016,
+      "total_debt": 0,
+      "net_cash_ratio": 10.258812611985672
+    }
+  },
+  "CALY": {
+    "fetched_at": 1789679296.6908205,
+    "data": {
+      "target_mean": 20.4,
+      "market_cap": 2658614528,
+      "next_earnings": "2026-11-05",
+      "recommendation": "buy",
+      "sector": "Consumer Cyclical",
+      "per": 34.395348,
+      "pbr": 1.2249461,
+      "total_cash": 278100000,
+      "total_debt": 273400000,
+      "net_cash_ratio": 0.1767838079007142
+    }
+  },
+  "FN": {
+    "fetched_at": 1789679296.731366,
+    "data": {
+      "target_mean": 734.1111,
+      "market_cap": 13650216960,
+      "next_earnings": "2026-11-02",
+      "recommendation": "buy",
+      "sector": "Technology",
+      "per": 29.211658,
+      "pbr": 5.5618505,
+      "total_cash": 875054976,
+      "total_debt": 4013000,
+      "net_cash_ratio": 6.381158472077502
+    }
+  },
+  "ATI": {
+    "fetched_at": 1789679296.7285867,
+    "data": {
+      "target_mean": 259.8889,
+      "market_cap": 25006329856,
+      "next_earnings": "2026-10-27",
+      "recommendation": "strong_buy",
+      "sector": "Industrials",
+      "per": 53.85337,
+      "pbr": 13.324627,
+      "total_cash": 783000000,
+      "total_debt": 2192000000,
+      "net_cash_ratio": -5.634573358480775
+    }
+  },
+  "CAPR": {
+    "fetched_at": 1789679296.7376027,
+    "data": {
+      "target_mean": 27.0,
+      "market_cap": 547669248,
+      "next_earnings": "2026-11-10",
+      "recommendation": "buy",
+      "sector": "Healthcare",
+      "per": -6.374427,
+      "pbr": 2.2232711,
+      "total_cash": 237934784,
+      "total_debt": 91045360,
+      "net_cash_ratio": 26.820827449490096
+    }
+  },
+  "CCEP": {
+    "fetched_at": 1789679296.360762,
+    "data": {
+      "target_mean": 110.23536,
+      "market_cap": 44259627008,
+      "next_earnings": "2027-02-19",
+      "recommendation": "buy",
+      "sector": "Consumer Defensive",
+      "per": 19.586744,
+      "pbr": 4.6357317,
+      "total_cash": 1994000000,
+      "total_debt": 12188999680,
+      "net_cash_ratio": -23.03453591725307
+    }
+  },
+  "CROX": {
+    "fetched_at": 1789679296.7642016,
+    "data": {
+      "target_mean": 138.25,
+      "market_cap": 5897244160,
+      "next_earnings": "2026-10-29",
+      "recommendation": "none",
+      "sector": "Consumer Cyclical",
+      "per": 10.91393,
+      "pbr": 4.2758813,
+      "total_cash": 170276000,
+      "total_debt": 1689202048,
+      "net_cash_ratio": -25.75653994967032
+    }
+  },
+  "WDFC": {
+    "fetched_at": 1789679296.8357499,
+    "data": {
+      "target_mean": 271.66666,
+      "market_cap": 2556852992,
+      "next_earnings": "2026-10-21",
+      "recommendation": "strong_buy",
+      "sector": "Basic Materials",
+      "per": 28.952887,
+      "pbr": 9.184746,
+      "total_cash": 59137000,
+      "total_debt": 114414000,
+      "net_cash_ratio": -2.1619154551690394
+    }
+  },
+  "SM": {
+    "fetched_at": 1789679297.08173,
+    "data": {
+      "target_mean": 42.47059,
+      "market_cap": 8793464832,
+      "next_earnings": "2026-11-02",
+      "recommendation": "buy",
+      "sector": "Energy",
+      "per": 6.554965,
+      "pbr": 1.1237766,
+      "total_cash": 620000000,
+      "total_debt": 7432999936,
+      "net_cash_ratio": -77.47799151032075
+    }
+  },
+  "GFS": {
+    "fetched_at": 1789679296.8544645,
+    "data": {
+      "target_mean": 76.0,
+      "market_cap": 25552070656,
+      "next_earnings": "2026-11-10",
+      "recommendation": "buy",
+      "sector": "Technology",
+      "per": 35.8125,
+      "pbr": 2.128529,
+      "total_cash": 2356999936,
+      "total_debt": 1678000000,
+      "net_cash_ratio": 2.6573186382472724
+    }
+  },
+  "SLS": {
+    "fetched_at": 1789679297.0831,
+    "data": {
+      "target_mean": 32.5,
+      "market_cap": 2328433920,
+      "next_earnings": "2026-11-11",
+      "recommendation": "none",
+      "sector": "Healthcare",
+      "per": -115.299995,
+      "pbr": 16.906158,
+      "total_cash": 138343008,
+      "total_debt": 737000,
+      "net_cash_ratio": 5.9098094568215185
+    }
+  },
+  "ALC": {
+    "fetched_at": 1789679296.837299,
+    "data": {
+      "target_mean": 85.24,
+      "market_cap": 31508013056,
+      "next_earnings": "2026-11-10",
+      "recommendation": "buy",
+      "sector": "Healthcare",
+      "per": 49.755726,
+      "pbr": 1.4590468,
+      "total_cash": 1456999936,
+      "total_debt": 5298999808,
+      "net_cash_ratio": -12.19372311789866
+    }
+  },
+  "SYRE": {
+    "fetched_at": 1789679297.0943186,
+    "data": {
+      "target_mean": 120.07692,
+      "market_cap": 8048447488,
+      "next_earnings": "2026-11-03",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -26.305557,
+      "pbr": 8.549027,
+      "total_cash": 1145346048,
+      "total_debt": 0,
+      "net_cash_ratio": 14.230645720279314
+    }
+  },
+  "FRPT": {
+    "fetched_at": 1789679297.122872,
+    "data": {
+      "target_mean": 84.25,
+      "market_cap": 2958935552,
+      "next_earnings": "2026-11-02",
+      "recommendation": "buy",
+      "sector": "Consumer Defensive",
+      "per": 15.950778,
+      "pbr": 2.4188733,
+      "total_cash": 350808992,
+      "total_debt": 493656992,
+      "net_cash_ratio": -4.827682032596024
+    }
+  },
+  "MWA": {
+    "fetched_at": 1789679297.0843854,
+    "data": {
+      "target_mean": 31.0,
+      "market_cap": 3411346176,
+      "next_earnings": "2026-11-05",
+      "recommendation": "buy",
+      "sector": "Industrials",
+      "per": 15.387324,
+      "pbr": 3.0444477,
+      "total_cash": 495300000,
+      "total_debt": 452900000,
+      "net_cash_ratio": 1.2429110917648483
+    }
+  },
+  "NTST": {
+    "fetched_at": 1789679297.1827233,
+    "data": {
+      "target_mean": 23.02632,
+      "market_cap": 1780574208,
+      "next_earnings": "2026-10-26",
+      "recommendation": "none",
+      "sector": "Real Estate",
+      "per": 130.21428,
+      "pbr": 1.1770402,
+      "total_cash": 34637000,
+      "total_debt": 1403266944,
+      "net_cash_ratio": -76.86452706384479
+    }
+  },
+  "LOAR": {
+    "fetched_at": 1789679297.223361,
+    "data": {
+      "target_mean": 89.8,
+      "market_cap": 6022295040,
+      "next_earnings": "2026-11-12",
+      "recommendation": "buy",
+      "sector": "Industrials",
+      "per": 90.53521,
+      "pbr": 5.0210905,
+      "total_cash": 122433000,
+      "total_debt": 964846976,
+      "net_cash_ratio": -13.988254816555784
+    }
+  },
+  "UMBF": {
+    "fetched_at": 1789679297.2309606,
+    "data": {
+      "target_mean": 169.125,
+      "market_cap": 10235025408,
+      "next_earnings": "2026-10-27",
+      "recommendation": "buy",
+      "sector": "Financial Services",
+      "per": 11.211313,
+      "pbr": 1.3591938,
+      "total_cash": 2111611008,
+      "total_debt": 3712062976,
+      "net_cash_ratio": -15.637010209559804
+    }
+  },
+  "HUBS": {
+    "fetched_at": 1789679297.239639,
+    "data": {
+      "target_mean": 245.74068,
+      "market_cap": 11448282112,
+      "next_earnings": "2026-11-04",
+      "recommendation": "buy",
+      "sector": "Technology",
+      "per": 81.70107,
+      "pbr": 6.881276,
+      "total_cash": 1337943040,
+      "total_debt": 236914000,
+      "net_cash_ratio": 9.617417086934903
+    }
+  },
+  "PARR": {
+    "fetched_at": 1789679297.2358093,
+    "data": {
+      "target_mean": 86.57143,
+      "market_cap": 4333116928,
+      "next_earnings": "2026-11-03",
+      "recommendation": "buy",
+      "sector": "Energy",
+      "per": 5.0757036,
+      "pbr": 2.1497276,
+      "total_cash": 184996992,
+      "total_debt": 1134023040,
+      "net_cash_ratio": -21.90169487159521
+    }
+  },
+  "FLUT": {
+    "fetched_at": 1789679297.2713299,
+    "data": {
+      "target_mean": 139.13126,
+      "market_cap": 16052367360,
+      "next_earnings": "2026-11-12",
+      "recommendation": "buy",
+      "sector": "Consumer Cyclical",
+      "per": 12.454692,
+      "pbr": 1.8339348,
+      "total_cash": 1616999936,
+      "total_debt": 12581000192,
+      "net_cash_ratio": -68.30145367418254
+    }
+  },
+  "PAGS": {
+    "fetched_at": 1789679297.2253666,
+    "data": {
+      "target_mean": 11.6750965,
+      "market_cap": 2635175936,
+      "next_earnings": "2026-11-11",
+      "recommendation": "buy",
+      "sector": "Technology",
+      "per": 6.5479455,
+      "pbr": 0.90307343,
+      "total_cash": 1386558976,
+      "total_debt": 1775282048,
+      "net_cash_ratio": -14.751313818919149
+    }
+  },
+  "WMS": {
+    "fetched_at": 1789679297.2750793,
+    "data": {
+      "target_mean": 183.91667,
+      "market_cap": 9476189184,
+      "next_earnings": "2026-11-05",
+      "recommendation": "strong_buy",
+      "sector": "Industrials",
+      "per": 21.40886,
+      "pbr": 5.0023885,
+      "total_cash": 162251008,
+      "total_debt": 1767209984,
+      "net_cash_ratio": -16.93675532259192
+    }
+  },
+  "ABG": {
+    "fetched_at": 1789679297.3337882,
+    "data": {
+      "target_mean": 258.36365,
+      "market_cap": 3373344512,
+      "next_earnings": "2026-10-27",
+      "recommendation": "buy",
+      "sector": "Consumer Cyclical",
+      "per": 6.9959044,
+      "pbr": 0.859819,
+      "total_cash": 50300000,
+      "total_debt": 5530500096,
+      "net_cash_ratio": -162.45598623281083
+    }
+  },
+  "RELY": {
+    "fetched_at": 1789679297.3706462,
+    "data": {
+      "target_mean": 32.33333,
+      "market_cap": 4599894016,
+      "next_earnings": "2026-11-04",
+      "recommendation": "strong_buy",
+      "sector": "Technology",
+      "per": 15.633093,
+      "pbr": 4.0815177,
+      "total_cash": 676393984,
+      "total_debt": 38264000,
+      "net_cash_ratio": 13.87271058377359
+    }
+  },
+  "CMBT": {
+    "fetched_at": 1789679297.376361,
+    "data": {
+      "target_mean": 20.45,
+      "market_cap": 5922364928,
+      "next_earnings": "2026-11-26",
+      "recommendation": "none",
+      "sector": "Energy",
+      "per": 6.8952703,
+      "pbr": 1.8975456,
+      "total_cash": 159844992,
+      "total_debt": 5452661248,
+      "net_cash_ratio": -89.3699783844188
+    }
+  },
+  "STUB": {
+    "fetched_at": 1789679297.3893902,
+    "data": {
+      "target_mean": 11.29167,
+      "market_cap": 2269614336,
+      "next_earnings": "2026-11-12",
+      "recommendation": "none",
+      "sector": "Communication Services",
+      "per": 8.967797,
+      "pbr": 1.3904495,
+      "total_cash": 1715032960,
+      "total_debt": 1396270976,
+      "net_cash_ratio": 14.044764299550142
+    }
+  },
+  "TRIP": {
+    "fetched_at": 1789679297.4135177,
+    "data": {
+      "target_mean": 13.86667,
+      "market_cap": 1039558144,
+      "next_earnings": "2026-11-05",
+      "recommendation": "none",
+      "sector": "Consumer Cyclical",
+      "per": 8.25193,
+      "pbr": 1.5536871,
+      "total_cash": 843200000,
+      "total_debt": 893900032,
+      "net_cash_ratio": -4.877075158578143
+    }
+  },
+  "ONON": {
+    "fetched_at": 1789679297.4257889,
+    "data": {
+      "target_mean": 42.601776,
+      "market_cap": 9134087168,
+      "next_earnings": "2026-11-11",
+      "recommendation": "buy",
+      "sector": "Consumer Cyclical",
+      "per": 18.979166,
+      "pbr": 3.9145525,
+      "total_cash": 1239399936,
+      "total_debt": 562499968,
+      "net_cash_ratio": 7.410701863798986
+    }
+  },
+  "POOL": {
+    "fetched_at": 1789679297.3826833,
+    "data": {
+      "target_mean": 217.0,
+      "market_cap": 6092526080,
+      "next_earnings": "2026-10-22",
+      "recommendation": "buy",
+      "sector": "Industrials",
+      "per": 15.394856,
+      "pbr": 4.8353133,
+      "total_cash": 35034000,
+      "total_debt": 1695165952,
+      "net_cash_ratio": -27.24866385799698
+    }
+  },
+  "WEN": {
+    "fetched_at": 1789679297.4842055,
+    "data": {
+      "target_mean": 7.80263,
+      "market_cap": 1332782848,
+      "next_earnings": "2026-11-06",
+      "recommendation": "hold",
+      "sector": "Consumer Cyclical",
+      "per": 10.590908,
+      "pbr": 11.515651,
+      "total_cash": 341211008,
+      "total_debt": 4072525056,
+      "net_cash_ratio": -279.96414071499214
+    }
+  },
+  "WOR": {
+    "fetched_at": 1789679297.5242238,
+    "data": {
+      "target_mean": 65.6,
+      "market_cap": 2932671488,
+      "next_earnings": "2026-09-22",
+      "recommendation": "buy",
+      "sector": "Industrials",
+      "per": 19.08917,
+      "pbr": 2.934208,
+      "total_cash": 27725000,
+      "total_debt": 356271008,
+      "net_cash_ratio": -11.202959804545282
+    }
+  },
+  "SNAP": {
+    "fetched_at": 1789679297.53808,
+    "data": {
+      "target_mean": 7.39429,
+      "market_cap": 9555267584,
+      "next_earnings": "2026-11-04",
+      "recommendation": "hold",
+      "sector": "Communication Services",
+      "per": 7.285998,
+      "pbr": 4.930192,
+      "total_cash": 2659758080,
+      "total_debt": 4225746944,
+      "net_cash_ratio": -16.388749453989128
+    }
+  },
+  "PATH": {
+    "fetched_at": 1789679297.533177,
+    "data": {
+      "target_mean": 16.85176,
+      "market_cap": 7171098624,
+      "next_earnings": "2026-12-02",
+      "recommendation": "hold",
+      "sector": "Technology",
+      "per": 20.537313,
+      "pbr": 3.6791444,
+      "total_cash": 1283990016,
+      "total_debt": 79760000,
+      "net_cash_ratio": 16.792824630381208
+    }
+  },
+  "ARXS": {
+    "fetched_at": 1789679297.570511,
+    "data": {
+      "target_mean": 62.0,
+      "market_cap": 21412069376,
+      "next_earnings": "2026-11-11",
+      "recommendation": "strong_buy",
+      "sector": "Industrials",
+      "per": 621.25,
+      "pbr": 4.644426,
+      "total_cash": 494692992,
+      "total_debt": 1791344000,
+      "net_cash_ratio": -6.055701507549608
+    }
+  },
+  "SEZL": {
+    "fetched_at": 1789679297.6304934,
+    "data": {
+      "target_mean": 168.0,
+      "market_cap": 3807970816,
+      "next_earnings": "2026-11-04",
+      "recommendation": "none",
+      "sector": "Financial Services",
+      "per": 24.798246,
+      "pbr": 16.34104,
+      "total_cash": 79757000,
+      "total_debt": 122115000,
+      "net_cash_ratio": -1.112350961883002
+    }
+  },
+  "MTN": {
+    "fetched_at": 1789679297.627637,
+    "data": {
+      "target_mean": 147.23077,
+      "market_cap": 4908874752,
+      "next_earnings": "2026-09-28",
+      "recommendation": "hold",
+      "sector": "Consumer Cyclical",
+      "per": 29.689655,
+      "pbr": 8.896925,
+      "total_cash": 371374016,
+      "total_debt": 3257488896,
+      "net_cash_ratio": -58.793817846424446
+    }
+  },
+  "STOK": {
+    "fetched_at": 1789679297.668512,
+    "data": {
+      "target_mean": 46.46154,
+      "market_cap": 1866744192,
+      "next_earnings": "2026-11-03",
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": -8.23016,
+      "pbr": 5.2248507,
+      "total_cash": 292817984,
+      "total_debt": 2682000,
+      "net_cash_ratio": 15.542353646706832
+    }
+  },
+  "RRX": {
+    "fetched_at": 1789679297.6775613,
+    "data": {
+      "target_mean": 248.2,
+      "market_cap": 9851600896,
+      "next_earnings": "2026-10-28",
+      "recommendation": "strong_buy",
+      "sector": "Industrials",
+      "per": 30.440329,
+      "pbr": 1.4247468,
+      "total_cash": 441600000,
+      "total_debt": 4766400000,
+      "net_cash_ratio": -43.89946411406068
+    }
+  },
+  "QBTS": {
+    "fetched_at": 1789679297.6376734,
+    "data": {
+      "target_mean": 35.23625,
+      "market_cap": 6715595264,
+      "next_earnings": "2026-11-05",
+      "recommendation": "strong_buy",
+      "sector": "Technology",
+      "per": -46.842316,
+      "pbr": 6.0769496,
+      "total_cash": 546214976,
+      "total_debt": 48108000,
+      "net_cash_ratio": 7.417167896793608
+    }
+  },
+  "SATL": {
+    "fetched_at": 1789679297.6811733,
+    "data": {
+      "target_mean": 10.2,
+      "market_cap": 847106880,
+      "next_earnings": "2026-11-12",
+      "recommendation": "strong_buy",
+      "sector": "Industrials",
+      "per": -183.66667,
+      "pbr": 12.35426,
+      "total_cash": 112809000,
+      "total_debt": 96486000,
+      "net_cash_ratio": 1.92691151322015
+    }
+  },
+  "ASND": {
+    "fetched_at": 1789679297.4871802,
+    "data": {
+      "target_mean": 311.0821,
+      "market_cap": 15724856320,
+      "next_earnings": null,
+      "recommendation": "strong_buy",
+      "sector": "Healthcare",
+      "per": 18.487238,
+      "pbr": 9.472521,
+      "total_cash": 812259968,
+      "total_debt": 450073984,
+      "net_cash_ratio": 2.303270545876759
+    },
+    "no_earnings_at": 1789679297.4871802
+  },
+  "DAIC": {
+    "fetched_at": 1789679298.1785367,
+    "data": {
+      "target_mean": null,
+      "market_cap": 160375776,
+      "next_earnings": null,
+      "recommendation": "none",
+      "sector": "Technology",
+      "per": null,
+      "pbr": -1.5348972,
+      "total_cash": 853728,
+      "total_debt": 2161268,
+      "net_cash_ratio": -0.8152976918409425
+    },
+    "no_earnings_at": 1789679298.1785367
+  },
+  "AEMD": {
+    "fetched_at": 1789679298.7918196,
+    "data": {
+      "target_mean": 13.25,
+      "market_cap": 4821502,
+      "next_earnings": "2026-11-11",
+      "recommendation": "none",
+      "sector": "Healthcare",
+      "per": -11.894737,
+      "pbr": 0.62253237,
+      "total_cash": 4933579,
+      "total_debt": 367608,
+      "net_cash_ratio": 94.70017849209644
+    }
   }
 }

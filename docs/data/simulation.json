@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-18 05:07:59 JST",
+  "updated_at": "2026-09-18 06:08:22 JST",
   "regular_hours_last_run": false,
   "positions": [
     {
@@ -7,58 +7,328 @@
       "qty": 11.930585683297181,
       "avg_cost": 9.219999999999999,
       "cost": 110.0,
-      "price": 9.22,
-      "market_value": 110.00000000000001,
-      "pl": 1.4210854715202004e-14,
-      "pl_pct": 1.2918958832001821e-14
+      "price": 12.29,
+      "market_value": 146.62689804772234,
+      "pl": 36.626898047722335,
+      "pl_pct": 33.29718004338394
     },
     {
       "symbol": "SBET",
-      "qty": 13.784461152882207,
-      "avg_cost": 7.9799999999999995,
-      "cost": 110.0,
-      "price": 7.98,
-      "market_value": 110.00000000000001,
-      "pl": 1.4210854715202004e-14,
-      "pl_pct": 1.2918958832001821e-14
-    },
-    {
-      "symbol": "FTFT",
-      "qty": 15.714285714285715,
-      "avg_cost": 6.999999999999999,
-      "cost": 110.0,
-      "price": 7.0,
-      "market_value": 110.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "XHLD",
-      "qty": 11.398963730569948,
-      "avg_cost": 9.65,
-      "cost": 110.0,
-      "price": 9.65,
-      "market_value": 110.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
+      "qty": 14.99511490590884,
+      "avg_cost": 8.002606232294617,
+      "cost": 120.0,
+      "price": 8.26,
+      "market_value": 123.85964912280701,
+      "pl": 3.8596491228070136,
+      "pl_pct": 3.2163742690058443
     },
     {
       "symbol": "IRD",
-      "qty": 20.33271719038817,
-      "avg_cost": 5.41,
-      "cost": 110.0,
-      "price": 5.41,
-      "market_value": 110.0,
+      "qty": 22.226656584327564,
+      "avg_cost": 5.398922664986612,
+      "cost": 120.0,
+      "price": 5.28,
+      "market_value": 117.35674676524954,
+      "pl": -2.6432532347504605,
+      "pl_pct": -2.202711028958717
+    },
+    {
+      "symbol": "PURR",
+      "qty": 5.244755244755245,
+      "avg_cost": 11.44,
+      "cost": 60.0,
+      "price": 12.83,
+      "market_value": 67.2902097902098,
+      "pl": 7.290209790209801,
+      "pl_pct": 12.150349650349668
+    },
+    {
+      "symbol": "SMCI",
+      "qty": 1.628222523744912,
+      "avg_cost": 36.849999999999994,
+      "cost": 60.0,
+      "price": 40.35,
+      "market_value": 65.6987788331072,
+      "pl": 5.698778833107198,
+      "pl_pct": 9.49796472184533
+    },
+    {
+      "symbol": "ARCT",
+      "qty": 3.8461538461538463,
+      "avg_cost": 15.6,
+      "cost": 60.0,
+      "price": 16.93,
+      "market_value": 65.11538461538461,
+      "pl": 5.115384615384613,
+      "pl_pct": 8.525641025641022
+    },
+    {
+      "symbol": "SWKS",
+      "qty": 0.7010164738871364,
+      "avg_cost": 85.58999999999999,
+      "cost": 60.0,
+      "price": 91.32,
+      "market_value": 64.01682439537329,
+      "pl": 4.016824395373291,
+      "pl_pct": 6.6947073256221525
+    },
+    {
+      "symbol": "HPQ",
+      "qty": 1.834862385321101,
+      "avg_cost": 32.699999999999996,
+      "cost": 60.0,
+      "price": 34.66,
+      "market_value": 63.596330275229356,
+      "pl": 3.5963302752293558,
+      "pl_pct": 5.993883792048926
+    },
+    {
+      "symbol": "ORCL",
+      "qty": 0.41911148365465223,
+      "avg_cost": 143.15999999999997,
+      "cost": 60.0,
+      "price": 150.59,
+      "market_value": 63.11399832355408,
+      "pl": 3.1139983235540782,
+      "pl_pct": 5.189997205923464
+    },
+    {
+      "symbol": "BMNR",
+      "qty": 2.63042525208242,
+      "avg_cost": 22.81,
+      "cost": 60.0,
+      "price": 23.89,
+      "market_value": 62.84085927224902,
+      "pl": 2.84085927224902,
+      "pl_pct": 4.734765453748366
+    },
+    {
+      "symbol": "NVDA",
+      "qty": 0.2805049088359046,
+      "avg_cost": 213.9,
+      "cost": 60.0,
+      "price": 219.34,
+      "market_value": 61.52594670406732,
+      "pl": 1.525946704067323,
+      "pl_pct": 2.5432445067788714
+    },
+    {
+      "symbol": "SMMT",
+      "qty": 3.4682080924855487,
+      "avg_cost": 17.3,
+      "cost": 60.0,
+      "price": 17.72,
+      "market_value": 61.45664739884392,
+      "pl": 1.45664739884392,
+      "pl_pct": 2.4277456647398665
+    },
+    {
+      "symbol": "MOS",
+      "qty": 2.420330778539734,
+      "avg_cost": 24.79,
+      "cost": 60.0,
+      "price": 25.39,
+      "market_value": 61.45219846712384,
+      "pl": 1.4521984671238428,
+      "pl_pct": 2.420330778539738
+    },
+    {
+      "symbol": "XP",
+      "qty": 3.0364372469635628,
+      "avg_cost": 19.76,
+      "cost": 60.0,
+      "price": 20.19,
+      "market_value": 61.30566801619434,
+      "pl": 1.305668016194339,
+      "pl_pct": 2.1761133603238987
+    },
+    {
+      "symbol": "MPC",
+      "qty": 0.1449555469655972,
+      "avg_cost": 413.92,
+      "cost": 60.0,
+      "price": 421.96,
+      "market_value": 61.165442597603395,
+      "pl": 1.1654425976033949,
+      "pl_pct": 1.9424043293389914
+    },
+    {
+      "symbol": "TEVA",
+      "qty": 1.5572281339216194,
+      "avg_cost": 38.53,
+      "cost": 60.0,
+      "price": 39.19,
+      "market_value": 61.02777056838826,
+      "pl": 1.027770568388263,
+      "pl_pct": 1.7129509473137718
+    },
+    {
+      "symbol": "CNC",
+      "qty": 0.908953188910771,
+      "avg_cost": 66.01,
+      "cost": 60.0,
+      "price": 67.1,
+      "market_value": 60.99075897591273,
+      "pl": 0.9907589759127333,
+      "pl_pct": 1.6512649598545555
+    },
+    {
+      "symbol": "MSFT",
+      "qty": 0.1223740566999796,
+      "avg_cost": 490.3,
+      "cost": 60.0,
+      "price": 497.75,
+      "market_value": 60.91168672241484,
+      "pl": 0.9116867224148422,
+      "pl_pct": 1.5194778706914036
+    },
+    {
+      "symbol": "META",
+      "qty": 0.08911199893065601,
+      "avg_cost": 673.3100000000001,
+      "cost": 60.0,
+      "price": 682.31,
+      "market_value": 60.8020079903759,
+      "pl": 0.8020079903758983,
+      "pl_pct": 1.3366799839598305
+    },
+    {
+      "symbol": "RVTY",
+      "qty": 0.4117203046730255,
+      "avg_cost": 145.73,
+      "cost": 60.0,
+      "price": 146.73,
+      "market_value": 60.411720304673025,
+      "pl": 0.41172030467302534,
+      "pl_pct": 0.6862005077883756
+    },
+    {
+      "symbol": "DVN",
+      "qty": 1.2386457473162678,
+      "avg_cost": 48.43999999999999,
+      "cost": 60.0,
+      "price": 48.72,
+      "market_value": 60.34682080924856,
+      "pl": 0.3468208092485625,
+      "pl_pct": 0.5780346820809374
+    },
+    {
+      "symbol": "VEEV",
+      "qty": 0.22650056625141565,
+      "avg_cost": 264.9,
+      "cost": 60.0,
+      "price": 263.75,
+      "market_value": 59.73952434881088,
+      "pl": -0.2604756511891182,
+      "pl_pct": -0.434126085315197
+    },
+    {
+      "symbol": "ANF",
+      "qty": 0.4289084280506112,
+      "avg_cost": 139.89000000000001,
+      "cost": 60.0,
+      "price": 138.6,
+      "market_value": 59.44670812781471,
+      "pl": -0.5532918721852909,
+      "pl_pct": -0.9221531203088181
+    },
+    {
+      "symbol": "SSL",
+      "qty": 4.198740377886634,
+      "avg_cost": 14.290000000000001,
+      "cost": 60.0,
+      "price": 14.14,
+      "market_value": 59.370188943317004,
+      "pl": -0.6298110566829962,
+      "pl_pct": -1.0496850944716605
+    },
+    {
+      "symbol": "CRM",
+      "qty": 0.2399040383846462,
+      "avg_cost": 250.09999999999994,
+      "cost": 60.0,
+      "price": 242.85,
+      "market_value": 58.26069572171133,
+      "pl": -1.739304278288671,
+      "pl_pct": -2.8988404638144516
+    },
+    {
+      "symbol": "DAIC",
+      "qty": 1.8867924528301887,
+      "avg_cost": 5.3,
+      "cost": 10.0,
+      "price": 5.3,
+      "market_value": 10.0,
       "pl": 0.0,
       "pl_pct": 0.0
     },
     {
-      "symbol": "PGEN",
-      "qty": 14.794889038332213,
-      "avg_cost": 7.435,
-      "cost": 110.0,
-      "price": 7.435,
-      "market_value": 110.0,
+      "symbol": "AEMD",
+      "qty": 1.4749262536873156,
+      "avg_cost": 6.78,
+      "cost": 10.0,
+      "price": 6.78,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "BIAF",
+      "qty": 1.1428571428571428,
+      "avg_cost": 8.75,
+      "cost": 10.0,
+      "price": 8.75,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "USDE",
+      "qty": 1.297016861219196,
+      "avg_cost": 7.71,
+      "cost": 10.0,
+      "price": 7.71,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "VEEA",
+      "qty": 1.876172607879925,
+      "avg_cost": 5.33,
+      "cost": 10.0,
+      "price": 5.33,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "ABSI",
+      "qty": 1.0787486515641855,
+      "avg_cost": 9.27,
+      "cost": 10.0,
+      "price": 9.27,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "NVAX",
+      "qty": 1.0,
+      "avg_cost": 10.0,
+      "cost": 10.0,
+      "price": 10.0,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "PAGS",
+      "qty": 1.0460251046025104,
+      "avg_cost": 9.56,
+      "cost": 10.0,
+      "price": 9.56,
+      "market_value": 10.0,
       "pl": 0.0,
       "pl_pct": 0.0
     },
@@ -67,343 +337,253 @@
       "qty": 18.121911037891266,
       "avg_cost": 6.070000000000001,
       "cost": 110.0,
-      "price": 6.07,
-      "market_value": 109.99999999999999,
-      "pl": -1.4210854715202004e-14,
-      "pl_pct": -1.2918958832001821e-14
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
     },
     {
-      "symbol": "CRM",
-      "qty": 0.2399040383846462,
-      "avg_cost": 250.09999999999994,
-      "cost": 60.0,
-      "price": 250.1,
-      "market_value": 60.000000000000014,
-      "pl": 1.4210854715202004e-14,
-      "pl_pct": 2.3684757858670007e-14
+      "symbol": "FTFT",
+      "qty": 15.714285714285715,
+      "avg_cost": 6.999999999999999,
+      "cost": 110.0,
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
     },
     {
-      "symbol": "ORCL",
-      "qty": 0.41911148365465223,
-      "avg_cost": 143.15999999999997,
-      "cost": 60.0,
-      "price": 143.16,
-      "market_value": 60.000000000000014,
-      "pl": 1.4210854715202004e-14,
-      "pl_pct": 2.3684757858670007e-14
+      "symbol": "XHLD",
+      "qty": 11.398963730569948,
+      "avg_cost": 9.65,
+      "cost": 110.0,
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
     },
     {
-      "symbol": "XP",
-      "qty": 3.0364372469635628,
-      "avg_cost": 19.76,
-      "cost": 60.0,
-      "price": 19.76,
-      "market_value": 60.00000000000001,
-      "pl": 7.105427357601002e-15,
-      "pl_pct": 1.1842378929335004e-14
-    },
-    {
-      "symbol": "DVN",
-      "qty": 1.2386457473162678,
-      "avg_cost": 48.43999999999999,
-      "cost": 60.0,
-      "price": 48.44,
-      "market_value": 60.00000000000001,
-      "pl": 7.105427357601002e-15,
-      "pl_pct": 1.1842378929335004e-14
-    },
-    {
-      "symbol": "SMCI",
-      "qty": 1.628222523744912,
-      "avg_cost": 36.849999999999994,
-      "cost": 60.0,
-      "price": 36.85,
-      "market_value": 60.00000000000001,
-      "pl": 7.105427357601002e-15,
-      "pl_pct": 1.1842378929335004e-14
-    },
-    {
-      "symbol": "SWKS",
-      "qty": 0.7010164738871364,
-      "avg_cost": 85.58999999999999,
-      "cost": 60.0,
-      "price": 85.59,
-      "market_value": 60.00000000000001,
-      "pl": 7.105427357601002e-15,
-      "pl_pct": 1.1842378929335004e-14
-    },
-    {
-      "symbol": "HPQ",
-      "qty": 1.834862385321101,
-      "avg_cost": 32.699999999999996,
-      "cost": 60.0,
-      "price": 32.7,
-      "market_value": 60.00000000000001,
-      "pl": 7.105427357601002e-15,
-      "pl_pct": 1.1842378929335004e-14
-    },
-    {
-      "symbol": "TEVA",
-      "qty": 1.5572281339216194,
-      "avg_cost": 38.53,
-      "cost": 60.0,
-      "price": 38.53,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "FANG",
-      "qty": 0.3084198622391282,
-      "avg_cost": 194.54,
-      "cost": 60.0,
-      "price": 194.54,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "ARCT",
-      "qty": 3.8461538461538463,
-      "avg_cost": 15.6,
-      "cost": 60.0,
-      "price": 15.6,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "BMNR",
-      "qty": 2.63042525208242,
-      "avg_cost": 22.81,
-      "cost": 60.0,
-      "price": 22.81,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "HNI",
-      "qty": 1.2984202553559836,
-      "avg_cost": 46.21,
-      "cost": 60.0,
-      "price": 46.21,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "INSP",
-      "qty": 0.8247422680412371,
-      "avg_cost": 72.75,
-      "cost": 60.0,
-      "price": 72.75,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "HRMY",
-      "qty": 1.4214641080312722,
-      "avg_cost": 42.21,
-      "cost": 60.0,
-      "price": 42.21,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "PURR",
-      "qty": 5.244755244755245,
-      "avg_cost": 11.44,
-      "cost": 60.0,
-      "price": 11.44,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "MOS",
-      "qty": 2.420330778539734,
-      "avg_cost": 24.79,
-      "cost": 60.0,
-      "price": 24.79,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "RVTY",
-      "qty": 0.4117203046730255,
-      "avg_cost": 145.73,
-      "cost": 60.0,
-      "price": 145.73,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "VEEV",
-      "qty": 0.22650056625141565,
-      "avg_cost": 264.9,
-      "cost": 60.0,
-      "price": 264.9,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "CTSH",
-      "qty": 0.9700889248181083,
-      "avg_cost": 61.85,
-      "cost": 60.0,
-      "price": 61.85,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "MPC",
-      "qty": 0.1449555469655972,
-      "avg_cost": 413.92,
-      "cost": 60.0,
-      "price": 413.92,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "APA",
-      "qty": 1.3395847287340925,
-      "avg_cost": 44.79,
-      "cost": 60.0,
-      "price": 44.79,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "CNC",
-      "qty": 0.908953188910771,
-      "avg_cost": 66.01,
-      "cost": 60.0,
-      "price": 66.01,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "T",
-      "qty": 2.320185614849188,
-      "avg_cost": 25.86,
-      "cost": 60.0,
-      "price": 25.86,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "MSFT",
-      "qty": 0.1223740566999796,
-      "avg_cost": 490.3,
-      "cost": 60.0,
-      "price": 490.3,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "NVDA",
-      "qty": 0.2805049088359046,
-      "avg_cost": 213.9,
-      "cost": 60.0,
-      "price": 213.9,
-      "market_value": 60.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
+      "symbol": "PGEN",
+      "qty": 14.794889038332213,
+      "avg_cost": 7.435,
+      "cost": 110.0,
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
     },
     {
       "symbol": "BBNX",
       "qty": 2.7051397655545535,
       "avg_cost": 22.18,
       "cost": 60.0,
-      "price": 22.18,
-      "market_value": 59.99999999999999,
-      "pl": -7.105427357601002e-15,
-      "pl_pct": -1.1842378929335004e-14
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
     },
     {
-      "symbol": "SSL",
-      "qty": 4.198740377886634,
-      "avg_cost": 14.290000000000001,
+      "symbol": "FANG",
+      "qty": 0.3084198622391282,
+      "avg_cost": 194.54,
       "cost": 60.0,
-      "price": 14.29,
-      "market_value": 59.99999999999999,
-      "pl": -7.105427357601002e-15,
-      "pl_pct": -1.1842378929335004e-14
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
     },
     {
       "symbol": "SIG",
       "qty": 0.5828638041577617,
       "avg_cost": 102.94000000000001,
       "cost": 60.0,
-      "price": 102.94,
-      "market_value": 59.99999999999999,
-      "pl": -7.105427357601002e-15,
-      "pl_pct": -1.1842378929335004e-14
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
     },
     {
-      "symbol": "SMMT",
-      "qty": 3.4682080924855487,
-      "avg_cost": 17.3,
+      "symbol": "HNI",
+      "qty": 1.2984202553559836,
+      "avg_cost": 46.21,
       "cost": 60.0,
-      "price": 17.3,
-      "market_value": 59.99999999999999,
-      "pl": -7.105427357601002e-15,
-      "pl_pct": -1.1842378929335004e-14
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
     },
     {
-      "symbol": "ANF",
-      "qty": 0.4289084280506112,
-      "avg_cost": 139.89000000000001,
+      "symbol": "INSP",
+      "qty": 0.8247422680412371,
+      "avg_cost": 72.75,
       "cost": 60.0,
-      "price": 139.89,
-      "market_value": 59.99999999999999,
-      "pl": -7.105427357601002e-15,
-      "pl_pct": -1.1842378929335004e-14
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
     },
     {
-      "symbol": "META",
-      "qty": 0.08911199893065601,
-      "avg_cost": 673.3100000000001,
+      "symbol": "HRMY",
+      "qty": 1.4214641080312722,
+      "avg_cost": 42.21,
       "cost": 60.0,
-      "price": 673.31,
-      "market_value": 59.99999999999999,
-      "pl": -7.105427357601002e-15,
-      "pl_pct": -1.1842378929335004e-14
-    },
-    {
-      "symbol": "JKHY",
-      "qty": 0.3774059630142156,
-      "avg_cost": 158.98000000000002,
-      "cost": 60.0,
-      "price": 158.98,
-      "market_value": 59.99999999999999,
-      "pl": -7.105427357601002e-15,
-      "pl_pct": -1.1842378929335004e-14
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
     },
     {
       "symbol": "TRMD",
       "qty": 1.6393442622950816,
       "avg_cost": 36.60000000000001,
       "cost": 60.0,
-      "price": 36.6,
-      "market_value": 59.999999999999986,
-      "pl": -1.4210854715202004e-14,
-      "pl_pct": -2.3684757858670007e-14
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
+    },
+    {
+      "symbol": "CTSH",
+      "qty": 0.9700889248181083,
+      "avg_cost": 61.85,
+      "cost": 60.0,
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
+    },
+    {
+      "symbol": "APA",
+      "qty": 1.3395847287340925,
+      "avg_cost": 44.79,
+      "cost": 60.0,
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
+    },
+    {
+      "symbol": "JKHY",
+      "qty": 0.3774059630142156,
+      "avg_cost": 158.98000000000002,
+      "cost": 60.0,
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
+    },
+    {
+      "symbol": "T",
+      "qty": 2.320185614849188,
+      "avg_cost": 25.86,
+      "cost": 60.0,
+      "price": null,
+      "market_value": null,
+      "pl": null,
+      "pl_pct": null
     }
   ],
   "trades": [
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "PAGS",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.56,
+      "qty": 1.0460251046025104,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "NVAX",
+      "side": "buy",
+      "kind": "day",
+      "price": 10.0,
+      "qty": 1.0,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "SBET",
+      "side": "buy",
+      "kind": "day",
+      "price": 8.26,
+      "qty": 1.2106537530266344,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "IRD",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.28,
+      "qty": 1.8939393939393938,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "ABSI",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.27,
+      "qty": 1.0787486515641855,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "VEEA",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.33,
+      "qty": 1.876172607879925,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "USDE",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.71,
+      "qty": 1.297016861219196,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "BIAF",
+      "side": "buy",
+      "kind": "day",
+      "price": 8.75,
+      "qty": 1.1428571428571428,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "AEMD",
+      "side": "buy",
+      "kind": "day",
+      "price": 6.78,
+      "qty": 1.4749262536873156,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "DAIC",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.3,
+      "qty": 1.8867924528301887,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
     {
       "time": "2026-09-18 05:07:59 JST",
       "symbol": "PGEN",
@@ -3156,13 +3336,13 @@
     }
   ],
   "summary": {
-    "total_bought": 2750.0,
-    "total_cost_basis": 2750.0,
-    "total_market_value": 2750.0,
+    "total_bought": 2850.0,
+    "total_cost_basis": 2850.0,
+    "total_market_value": 1827.7295,
     "realized_pl": 0,
-    "unrealized_pl": 0.0,
-    "total_pl": 0.0,
-    "total_pl_pct": 0.0
+    "unrealized_pl": -1022.2705,
+    "total_pl": -1022.2705,
+    "total_pl_pct": -35.87
   },
   "accuracy": {
     "all": {
@@ -3171,9 +3351,9 @@
       "rate": null
     },
     "d1": {
-      "hits": 26,
+      "hits": 45,
       "total": 169,
-      "rate": 15.4
+      "rate": 26.6
     },
     "d5": {
       "hits": 0,
@@ -3204,12 +3384,12 @@
       "cost": 110.0
     },
     "IRD": {
-      "qty": 20.33271719038817,
-      "cost": 110.0
+      "qty": 22.226656584327564,
+      "cost": 120.0
     },
     "SBET": {
-      "qty": 13.784461152882207,
-      "cost": 110.0
+      "qty": 14.99511490590884,
+      "cost": 120.0
     },
     "PGEN": {
       "qty": 14.794889038332213,
@@ -3346,6 +3526,38 @@
     "NVDA": {
       "qty": 0.2805049088359046,
       "cost": 60.0
+    },
+    "DAIC": {
+      "qty": 1.8867924528301887,
+      "cost": 10.0
+    },
+    "AEMD": {
+      "qty": 1.4749262536873156,
+      "cost": 10.0
+    },
+    "BIAF": {
+      "qty": 1.1428571428571428,
+      "cost": 10.0
+    },
+    "USDE": {
+      "qty": 1.297016861219196,
+      "cost": 10.0
+    },
+    "VEEA": {
+      "qty": 1.876172607879925,
+      "cost": 10.0
+    },
+    "ABSI": {
+      "qty": 1.0787486515641855,
+      "cost": 10.0
+    },
+    "NVAX": {
+      "qty": 1.0,
+      "cost": 10.0
+    },
+    "PAGS": {
+      "qty": 1.0460251046025104,
+      "cost": 10.0
     }
   },
   "_trades_raw": [
@@ -6096,6 +6308,106 @@
       "kind": "day",
       "price": 7.435,
       "qty": 1.3449899125756557,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "DAIC",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.3,
+      "qty": 1.8867924528301887,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "AEMD",
+      "side": "buy",
+      "kind": "day",
+      "price": 6.78,
+      "qty": 1.4749262536873156,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "BIAF",
+      "side": "buy",
+      "kind": "day",
+      "price": 8.75,
+      "qty": 1.1428571428571428,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "USDE",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.71,
+      "qty": 1.297016861219196,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "VEEA",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.33,
+      "qty": 1.876172607879925,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "ABSI",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.27,
+      "qty": 1.0787486515641855,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "IRD",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.28,
+      "qty": 1.8939393939393938,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "SBET",
+      "side": "buy",
+      "kind": "day",
+      "price": 8.26,
+      "qty": 1.2106537530266344,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "NVAX",
+      "side": "buy",
+      "kind": "day",
+      "price": 10.0,
+      "qty": 1.0,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 06:08:22 JST",
+      "symbol": "PAGS",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.56,
+      "qty": 1.0460251046025104,
       "amount": 10.0,
       "prediction": "大きく値上がり"
     }
