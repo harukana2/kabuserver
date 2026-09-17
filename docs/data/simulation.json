@@ -1,0 +1,39 @@
+{
+  "updated_at": "2026-09-17 18:56:18 JST",
+  "regular_hours_last_run": false,
+  "positions": [],
+  "trades": [],
+  "summary": {
+    "total_bought": 0,
+    "total_cost_basis": 0.0,
+    "total_market_value": 0.0,
+    "realized_pl": 0,
+    "unrealized_pl": 0.0,
+    "total_pl": 0.0,
+    "total_pl_pct": null
+  },
+  "accuracy": {
+    "all": {
+      "hits": 0,
+      "total": 0,
+      "rate": null
+    },
+    "d1": {
+      "hits": 12,
+      "total": 69,
+      "rate": 17.4
+    },
+    "d5": {
+      "hits": 0,
+      "total": 0,
+      "rate": null
+    },
+    "d30": {
+      "hits": 0,
+      "total": 0,
+      "rate": null
+    }
+  },
+  "_positions_raw": {},
+  "_trades_raw": []
+}

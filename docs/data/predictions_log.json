@@ -1457,6 +1457,69 @@
       "horizon_end": "2026-12-21",
       "category": "大きく値上がり",
       "price_at_prediction": 17.02
+    },
+    {
+      "symbol": "IRD",
+      "kind": "day",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 18:56:18 JST",
+      "horizon_end": "2026-09-24",
+      "category": "大きく値上がり",
+      "price_at_prediction": 5.41
+    },
+    {
+      "symbol": "MSFT",
+      "kind": "day",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 18:56:18 JST",
+      "horizon_end": "2026-09-24",
+      "category": "少し値上がり",
+      "price_at_prediction": 490.3
+    },
+    {
+      "symbol": "MSFT",
+      "kind": "long",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 18:56:18 JST",
+      "horizon_end": "2026-12-21",
+      "category": "大きく値上がり",
+      "price_at_prediction": 490.3
+    },
+    {
+      "symbol": "ORCL",
+      "kind": "day",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 18:56:18 JST",
+      "horizon_end": "2026-09-24",
+      "category": "少し値下がり",
+      "price_at_prediction": 143.16
+    },
+    {
+      "symbol": "ORCL",
+      "kind": "long",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 18:56:18 JST",
+      "horizon_end": "2026-12-21",
+      "category": "大きく値下がり",
+      "price_at_prediction": 143.16
+    },
+    {
+      "symbol": "NVDA",
+      "kind": "day",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 18:56:18 JST",
+      "horizon_end": "2026-09-24",
+      "category": "変動なし",
+      "price_at_prediction": 213.9
+    },
+    {
+      "symbol": "NVDA",
+      "kind": "long",
+      "made_date": "2026-09-17",
+      "made_at": "2026-09-17 18:56:18 JST",
+      "horizon_end": "2026-12-21",
+      "category": "少し値上がり",
+      "price_at_prediction": 213.9
     }
   ]
 }
