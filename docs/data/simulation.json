@@ -1,79 +1,809 @@
 {
-  "updated_at": "2026-09-17 22:08:51 JST",
-  "regular_hours_last_run": false,
+  "updated_at": "2026-09-17 23:07:53 JST",
+  "regular_hours_last_run": true,
   "positions": [
     {
       "symbol": "MEDS",
-      "qty": 6.589785831960461,
+      "qty": 8.237232289950576,
       "avg_cost": 6.07,
-      "cost": 40.0,
+      "cost": 50.0,
       "price": 6.07,
-      "market_value": 40.0,
+      "market_value": 50.0,
       "pl": 0.0,
       "pl_pct": 0.0
     },
     {
       "symbol": "AEHL",
-      "qty": 4.338394793926247,
+      "qty": 5.422993492407809,
       "avg_cost": 9.22,
-      "cost": 40.0,
+      "cost": 50.0,
       "price": 9.22,
-      "market_value": 40.0,
+      "market_value": 50.0,
       "pl": 0.0,
       "pl_pct": 0.0
     },
     {
       "symbol": "FTFT",
-      "qty": 5.714285714285714,
+      "qty": 7.142857142857143,
       "avg_cost": 7.0,
-      "cost": 40.0,
+      "cost": 50.0,
       "price": 7.0,
-      "market_value": 40.0,
+      "market_value": 50.0,
       "pl": 0.0,
       "pl_pct": 0.0
     },
     {
       "symbol": "XHLD",
-      "qty": 4.1450777202072535,
+      "qty": 5.181347150259067,
       "avg_cost": 9.65,
-      "cost": 40.0,
+      "cost": 50.0,
       "price": 9.65,
-      "market_value": 40.0,
+      "market_value": 50.0,
       "pl": 0.0,
       "pl_pct": 0.0
     },
     {
       "symbol": "IRD",
-      "qty": 7.393715341959334,
+      "qty": 9.242144177449168,
       "avg_cost": 5.41,
-      "cost": 40.0,
+      "cost": 50.0,
       "price": 5.41,
-      "market_value": 40.0,
+      "market_value": 50.0,
       "pl": 0.0,
       "pl_pct": 0.0
     },
     {
       "symbol": "SBET",
-      "qty": 5.012531328320802,
+      "qty": 6.265664160401002,
       "avg_cost": 7.98,
-      "cost": 40.0,
+      "cost": 50.0,
       "price": 7.98,
-      "market_value": 40.0,
+      "market_value": 50.0,
       "pl": 0.0,
       "pl_pct": 0.0
     },
     {
       "symbol": "PGEN",
-      "qty": 5.379959650302623,
+      "qty": 6.724949562878279,
       "avg_cost": 7.435,
-      "cost": 40.0,
+      "cost": 50.0,
       "price": 7.435,
-      "market_value": 40.0,
+      "market_value": 50.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "BBNX",
+      "qty": 0.4508566275924256,
+      "avg_cost": 22.18,
+      "cost": 10.0,
+      "price": 22.18,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "TEVA",
+      "qty": 0.2595380223202699,
+      "avg_cost": 38.53,
+      "cost": 10.0,
+      "price": 38.53,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "FANG",
+      "qty": 0.05140331037318804,
+      "avg_cost": 194.54,
+      "cost": 10.0,
+      "price": 194.54,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "ARCT",
+      "qty": 0.6410256410256411,
+      "avg_cost": 15.599999999999998,
+      "cost": 10.0,
+      "price": 15.6,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "XP",
+      "qty": 0.5060728744939271,
+      "avg_cost": 19.76,
+      "cost": 10.0,
+      "price": 19.76,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "SSL",
+      "qty": 0.6997900629811057,
+      "avg_cost": 14.29,
+      "cost": 10.0,
+      "price": 14.29,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "BMNR",
+      "qty": 0.43840420868040336,
+      "avg_cost": 22.81,
+      "cost": 10.0,
+      "price": 22.81,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "SIG",
+      "qty": 0.09714396735962696,
+      "avg_cost": 102.94,
+      "cost": 10.0,
+      "price": 102.94,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "SMMT",
+      "qty": 0.5780346820809248,
+      "avg_cost": 17.3,
+      "cost": 10.0,
+      "price": 17.3,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "ANF",
+      "qty": 0.0714847380084352,
+      "avg_cost": 139.89,
+      "cost": 10.0,
+      "price": 139.89,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "HNI",
+      "qty": 0.21640337589266392,
+      "avg_cost": 46.21,
+      "cost": 10.0,
+      "price": 46.21,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "INSP",
+      "qty": 0.13745704467353953,
+      "avg_cost": 72.75,
+      "cost": 10.0,
+      "price": 72.75,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "HRMY",
+      "qty": 0.2369106846718787,
+      "avg_cost": 42.21,
+      "cost": 10.0,
+      "price": 42.21,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "PURR",
+      "qty": 0.8741258741258742,
+      "avg_cost": 11.44,
+      "cost": 10.0,
+      "price": 11.44,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "TRMD",
+      "qty": 0.27322404371584696,
+      "avg_cost": 36.6,
+      "cost": 10.0,
+      "price": 36.6,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "CRM",
+      "qty": 0.03998400639744103,
+      "avg_cost": 250.09999999999997,
+      "cost": 10.0,
+      "price": 250.1,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "DVN",
+      "qty": 0.2064409578860446,
+      "avg_cost": 48.44,
+      "cost": 10.0,
+      "price": 48.44,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "MOS",
+      "qty": 0.40338846308995563,
+      "avg_cost": 24.79,
+      "cost": 10.0,
+      "price": 24.79,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "RVTY",
+      "qty": 0.06862005077883758,
+      "avg_cost": 145.73,
+      "cost": 10.0,
+      "price": 145.73,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "VEEV",
+      "qty": 0.037750094375235944,
+      "avg_cost": 264.9,
+      "cost": 10.0,
+      "price": 264.9,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "SMCI",
+      "qty": 0.27137042062415195,
+      "avg_cost": 36.85,
+      "cost": 10.0,
+      "price": 36.85,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "CTSH",
+      "qty": 0.16168148746968472,
+      "avg_cost": 61.85,
+      "cost": 10.0,
+      "price": 61.85,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "MPC",
+      "qty": 0.024159257827599534,
+      "avg_cost": 413.92,
+      "cost": 10.0,
+      "price": 413.92,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "META",
+      "qty": 0.014851999821776003,
+      "avg_cost": 673.31,
+      "cost": 10.0,
+      "price": 673.31,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "APA",
+      "qty": 0.22326412145568209,
+      "avg_cost": 44.79,
+      "cost": 10.0,
+      "price": 44.79,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "SWKS",
+      "qty": 0.11683607898118939,
+      "avg_cost": 85.59,
+      "cost": 10.0,
+      "price": 85.59,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "JKHY",
+      "qty": 0.0629009938357026,
+      "avg_cost": 158.98,
+      "cost": 10.0,
+      "price": 158.98,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "CNC",
+      "qty": 0.15149219815179518,
+      "avg_cost": 66.01,
+      "cost": 10.0,
+      "price": 66.01,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "T",
+      "qty": 0.3866976024748647,
+      "avg_cost": 25.86,
+      "cost": 10.0,
+      "price": 25.86,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "HPQ",
+      "qty": 0.3058103975535168,
+      "avg_cost": 32.7,
+      "cost": 10.0,
+      "price": 32.7,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "MSFT",
+      "qty": 0.020395676116663267,
+      "avg_cost": 490.3,
+      "cost": 10.0,
+      "price": 490.3,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "ORCL",
+      "qty": 0.06985191394244203,
+      "avg_cost": 143.16,
+      "cost": 10.0,
+      "price": 143.16,
+      "market_value": 10.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "qty": 0.04675081813931744,
+      "avg_cost": 213.9,
+      "cost": 10.0,
+      "price": 213.9,
+      "market_value": 10.0,
       "pl": 0.0,
       "pl_pct": 0.0
     }
   ],
   "trades": [
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "NVDA",
+      "side": "buy",
+      "kind": "long",
+      "price": 213.9,
+      "qty": 0.04675081813931744,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "ORCL",
+      "side": "buy",
+      "kind": "day",
+      "price": 143.16,
+      "qty": 0.06985191394244203,
+      "amount": 10.0,
+      "prediction": "少し値下がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "MSFT",
+      "side": "buy",
+      "kind": "day",
+      "price": 490.3,
+      "qty": 0.020395676116663267,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "HPQ",
+      "side": "buy",
+      "kind": "day",
+      "price": 32.7,
+      "qty": 0.3058103975535168,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "T",
+      "side": "buy",
+      "kind": "day",
+      "price": 25.86,
+      "qty": 0.3866976024748647,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "CNC",
+      "side": "buy",
+      "kind": "day",
+      "price": 66.01,
+      "qty": 0.15149219815179518,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "JKHY",
+      "side": "buy",
+      "kind": "day",
+      "price": 158.98,
+      "qty": 0.0629009938357026,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "SWKS",
+      "side": "buy",
+      "kind": "day",
+      "price": 85.59,
+      "qty": 0.11683607898118939,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "APA",
+      "side": "buy",
+      "kind": "day",
+      "price": 44.79,
+      "qty": 0.22326412145568209,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "META",
+      "side": "buy",
+      "kind": "day",
+      "price": 673.31,
+      "qty": 0.014851999821776003,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "MPC",
+      "side": "buy",
+      "kind": "day",
+      "price": 413.92,
+      "qty": 0.024159257827599534,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "CTSH",
+      "side": "buy",
+      "kind": "day",
+      "price": 61.85,
+      "qty": 0.16168148746968472,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "SMCI",
+      "side": "buy",
+      "kind": "day",
+      "price": 36.85,
+      "qty": 0.27137042062415195,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "VEEV",
+      "side": "buy",
+      "kind": "day",
+      "price": 264.9,
+      "qty": 0.037750094375235944,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "RVTY",
+      "side": "buy",
+      "kind": "day",
+      "price": 145.73,
+      "qty": 0.06862005077883758,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "MOS",
+      "side": "buy",
+      "kind": "day",
+      "price": 24.79,
+      "qty": 0.40338846308995563,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "DVN",
+      "side": "buy",
+      "kind": "day",
+      "price": 48.44,
+      "qty": 0.2064409578860446,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "CRM",
+      "side": "buy",
+      "kind": "day",
+      "price": 250.1,
+      "qty": 0.03998400639744103,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "TRMD",
+      "side": "buy",
+      "kind": "day",
+      "price": 36.6,
+      "qty": 0.27322404371584696,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "PURR",
+      "side": "buy",
+      "kind": "day",
+      "price": 11.44,
+      "qty": 0.8741258741258742,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "PGEN",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.435,
+      "qty": 1.3449899125756557,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "HRMY",
+      "side": "buy",
+      "kind": "day",
+      "price": 42.21,
+      "qty": 0.2369106846718787,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "INSP",
+      "side": "buy",
+      "kind": "day",
+      "price": 72.75,
+      "qty": 0.13745704467353953,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "HNI",
+      "side": "buy",
+      "kind": "long",
+      "price": 46.21,
+      "qty": 0.21640337589266392,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "ANF",
+      "side": "buy",
+      "kind": "day",
+      "price": 139.89,
+      "qty": 0.0714847380084352,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "SMMT",
+      "side": "buy",
+      "kind": "day",
+      "price": 17.3,
+      "qty": 0.5780346820809248,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "SIG",
+      "side": "buy",
+      "kind": "day",
+      "price": 102.94,
+      "qty": 0.09714396735962696,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "IRD",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.41,
+      "qty": 1.8484288354898335,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "BMNR",
+      "side": "buy",
+      "kind": "day",
+      "price": 22.81,
+      "qty": 0.43840420868040336,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "SBET",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.98,
+      "qty": 1.2531328320802004,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "SSL",
+      "side": "buy",
+      "kind": "day",
+      "price": 14.29,
+      "qty": 0.6997900629811057,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "XP",
+      "side": "buy",
+      "kind": "day",
+      "price": 19.76,
+      "qty": 0.5060728744939271,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "ARCT",
+      "side": "buy",
+      "kind": "day",
+      "price": 15.6,
+      "qty": 0.6410256410256411,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "XHLD",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.65,
+      "qty": 1.0362694300518134,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "FANG",
+      "side": "buy",
+      "kind": "day",
+      "price": 194.54,
+      "qty": 0.05140331037318804,
+      "amount": 10.0,
+      "prediction": "大きく値下がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "TEVA",
+      "side": "buy",
+      "kind": "day",
+      "price": 38.53,
+      "qty": 0.2595380223202699,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "FTFT",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.0,
+      "qty": 1.4285714285714286,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "AEHL",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.22,
+      "qty": 1.0845986984815617,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "BBNX",
+      "side": "buy",
+      "kind": "day",
+      "price": 22.18,
+      "qty": 0.4508566275924256,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "MEDS",
+      "side": "buy",
+      "kind": "day",
+      "price": 6.07,
+      "qty": 1.6474464579901154,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
     {
       "time": "2026-09-17 22:08:51 JST",
       "symbol": "PGEN",
@@ -356,9 +1086,9 @@
     }
   ],
   "summary": {
-    "total_bought": 280.0,
-    "total_cost_basis": 280.0,
-    "total_market_value": 280.0,
+    "total_bought": 680.0,
+    "total_cost_basis": 680.0,
+    "total_market_value": 680.0,
     "realized_pl": 0,
     "unrealized_pl": 0.0,
     "total_pl": 0.0,
@@ -388,32 +1118,164 @@
   },
   "_positions_raw": {
     "MEDS": {
-      "qty": 6.589785831960461,
-      "cost": 40.0
+      "qty": 8.237232289950576,
+      "cost": 50.0
     },
     "AEHL": {
-      "qty": 4.338394793926247,
-      "cost": 40.0
+      "qty": 5.422993492407809,
+      "cost": 50.0
     },
     "FTFT": {
-      "qty": 5.714285714285714,
-      "cost": 40.0
+      "qty": 7.142857142857143,
+      "cost": 50.0
     },
     "XHLD": {
-      "qty": 4.1450777202072535,
-      "cost": 40.0
+      "qty": 5.181347150259067,
+      "cost": 50.0
     },
     "IRD": {
-      "qty": 7.393715341959334,
-      "cost": 40.0
+      "qty": 9.242144177449168,
+      "cost": 50.0
     },
     "SBET": {
-      "qty": 5.012531328320802,
-      "cost": 40.0
+      "qty": 6.265664160401002,
+      "cost": 50.0
     },
     "PGEN": {
-      "qty": 5.379959650302623,
-      "cost": 40.0
+      "qty": 6.724949562878279,
+      "cost": 50.0
+    },
+    "BBNX": {
+      "qty": 0.4508566275924256,
+      "cost": 10.0
+    },
+    "TEVA": {
+      "qty": 0.2595380223202699,
+      "cost": 10.0
+    },
+    "FANG": {
+      "qty": 0.05140331037318804,
+      "cost": 10.0
+    },
+    "ARCT": {
+      "qty": 0.6410256410256411,
+      "cost": 10.0
+    },
+    "XP": {
+      "qty": 0.5060728744939271,
+      "cost": 10.0
+    },
+    "SSL": {
+      "qty": 0.6997900629811057,
+      "cost": 10.0
+    },
+    "BMNR": {
+      "qty": 0.43840420868040336,
+      "cost": 10.0
+    },
+    "SIG": {
+      "qty": 0.09714396735962696,
+      "cost": 10.0
+    },
+    "SMMT": {
+      "qty": 0.5780346820809248,
+      "cost": 10.0
+    },
+    "ANF": {
+      "qty": 0.0714847380084352,
+      "cost": 10.0
+    },
+    "HNI": {
+      "qty": 0.21640337589266392,
+      "cost": 10.0
+    },
+    "INSP": {
+      "qty": 0.13745704467353953,
+      "cost": 10.0
+    },
+    "HRMY": {
+      "qty": 0.2369106846718787,
+      "cost": 10.0
+    },
+    "PURR": {
+      "qty": 0.8741258741258742,
+      "cost": 10.0
+    },
+    "TRMD": {
+      "qty": 0.27322404371584696,
+      "cost": 10.0
+    },
+    "CRM": {
+      "qty": 0.03998400639744103,
+      "cost": 10.0
+    },
+    "DVN": {
+      "qty": 0.2064409578860446,
+      "cost": 10.0
+    },
+    "MOS": {
+      "qty": 0.40338846308995563,
+      "cost": 10.0
+    },
+    "RVTY": {
+      "qty": 0.06862005077883758,
+      "cost": 10.0
+    },
+    "VEEV": {
+      "qty": 0.037750094375235944,
+      "cost": 10.0
+    },
+    "SMCI": {
+      "qty": 0.27137042062415195,
+      "cost": 10.0
+    },
+    "CTSH": {
+      "qty": 0.16168148746968472,
+      "cost": 10.0
+    },
+    "MPC": {
+      "qty": 0.024159257827599534,
+      "cost": 10.0
+    },
+    "META": {
+      "qty": 0.014851999821776003,
+      "cost": 10.0
+    },
+    "APA": {
+      "qty": 0.22326412145568209,
+      "cost": 10.0
+    },
+    "SWKS": {
+      "qty": 0.11683607898118939,
+      "cost": 10.0
+    },
+    "JKHY": {
+      "qty": 0.0629009938357026,
+      "cost": 10.0
+    },
+    "CNC": {
+      "qty": 0.15149219815179518,
+      "cost": 10.0
+    },
+    "T": {
+      "qty": 0.3866976024748647,
+      "cost": 10.0
+    },
+    "HPQ": {
+      "qty": 0.3058103975535168,
+      "cost": 10.0
+    },
+    "MSFT": {
+      "qty": 0.020395676116663267,
+      "cost": 10.0
+    },
+    "ORCL": {
+      "qty": 0.06985191394244203,
+      "cost": 10.0
+    },
+    "NVDA": {
+      "qty": 0.04675081813931744,
+      "cost": 10.0
     }
   },
   "_trades_raw": [
@@ -696,6 +1558,406 @@
       "qty": 1.3449899125756557,
       "amount": 10.0,
       "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "MEDS",
+      "side": "buy",
+      "kind": "day",
+      "price": 6.07,
+      "qty": 1.6474464579901154,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "BBNX",
+      "side": "buy",
+      "kind": "day",
+      "price": 22.18,
+      "qty": 0.4508566275924256,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "AEHL",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.22,
+      "qty": 1.0845986984815617,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "FTFT",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.0,
+      "qty": 1.4285714285714286,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "TEVA",
+      "side": "buy",
+      "kind": "day",
+      "price": 38.53,
+      "qty": 0.2595380223202699,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "FANG",
+      "side": "buy",
+      "kind": "day",
+      "price": 194.54,
+      "qty": 0.05140331037318804,
+      "amount": 10.0,
+      "prediction": "大きく値下がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "XHLD",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.65,
+      "qty": 1.0362694300518134,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "ARCT",
+      "side": "buy",
+      "kind": "day",
+      "price": 15.6,
+      "qty": 0.6410256410256411,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "XP",
+      "side": "buy",
+      "kind": "day",
+      "price": 19.76,
+      "qty": 0.5060728744939271,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "SSL",
+      "side": "buy",
+      "kind": "day",
+      "price": 14.29,
+      "qty": 0.6997900629811057,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "SBET",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.98,
+      "qty": 1.2531328320802004,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "BMNR",
+      "side": "buy",
+      "kind": "day",
+      "price": 22.81,
+      "qty": 0.43840420868040336,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "IRD",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.41,
+      "qty": 1.8484288354898335,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "SIG",
+      "side": "buy",
+      "kind": "day",
+      "price": 102.94,
+      "qty": 0.09714396735962696,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "SMMT",
+      "side": "buy",
+      "kind": "day",
+      "price": 17.3,
+      "qty": 0.5780346820809248,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "ANF",
+      "side": "buy",
+      "kind": "day",
+      "price": 139.89,
+      "qty": 0.0714847380084352,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "HNI",
+      "side": "buy",
+      "kind": "long",
+      "price": 46.21,
+      "qty": 0.21640337589266392,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "INSP",
+      "side": "buy",
+      "kind": "day",
+      "price": 72.75,
+      "qty": 0.13745704467353953,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "HRMY",
+      "side": "buy",
+      "kind": "day",
+      "price": 42.21,
+      "qty": 0.2369106846718787,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "PGEN",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.435,
+      "qty": 1.3449899125756557,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "PURR",
+      "side": "buy",
+      "kind": "day",
+      "price": 11.44,
+      "qty": 0.8741258741258742,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "TRMD",
+      "side": "buy",
+      "kind": "day",
+      "price": 36.6,
+      "qty": 0.27322404371584696,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "CRM",
+      "side": "buy",
+      "kind": "day",
+      "price": 250.1,
+      "qty": 0.03998400639744103,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "DVN",
+      "side": "buy",
+      "kind": "day",
+      "price": 48.44,
+      "qty": 0.2064409578860446,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "MOS",
+      "side": "buy",
+      "kind": "day",
+      "price": 24.79,
+      "qty": 0.40338846308995563,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "RVTY",
+      "side": "buy",
+      "kind": "day",
+      "price": 145.73,
+      "qty": 0.06862005077883758,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "VEEV",
+      "side": "buy",
+      "kind": "day",
+      "price": 264.9,
+      "qty": 0.037750094375235944,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "SMCI",
+      "side": "buy",
+      "kind": "day",
+      "price": 36.85,
+      "qty": 0.27137042062415195,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "CTSH",
+      "side": "buy",
+      "kind": "day",
+      "price": 61.85,
+      "qty": 0.16168148746968472,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "MPC",
+      "side": "buy",
+      "kind": "day",
+      "price": 413.92,
+      "qty": 0.024159257827599534,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "META",
+      "side": "buy",
+      "kind": "day",
+      "price": 673.31,
+      "qty": 0.014851999821776003,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "APA",
+      "side": "buy",
+      "kind": "day",
+      "price": 44.79,
+      "qty": 0.22326412145568209,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "SWKS",
+      "side": "buy",
+      "kind": "day",
+      "price": 85.59,
+      "qty": 0.11683607898118939,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "JKHY",
+      "side": "buy",
+      "kind": "day",
+      "price": 158.98,
+      "qty": 0.0629009938357026,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "CNC",
+      "side": "buy",
+      "kind": "day",
+      "price": 66.01,
+      "qty": 0.15149219815179518,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "T",
+      "side": "buy",
+      "kind": "day",
+      "price": 25.86,
+      "qty": 0.3866976024748647,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "HPQ",
+      "side": "buy",
+      "kind": "day",
+      "price": 32.7,
+      "qty": 0.3058103975535168,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "MSFT",
+      "side": "buy",
+      "kind": "day",
+      "price": 490.3,
+      "qty": 0.020395676116663267,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "ORCL",
+      "side": "buy",
+      "kind": "day",
+      "price": 143.16,
+      "qty": 0.06985191394244203,
+      "amount": 10.0,
+      "prediction": "少し値下がり"
+    },
+    {
+      "time": "2026-09-17 23:07:53 JST",
+      "symbol": "NVDA",
+      "side": "buy",
+      "kind": "long",
+      "price": 213.9,
+      "qty": 0.04675081813931744,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
     }
   ]
 }
