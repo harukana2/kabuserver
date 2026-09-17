@@ -31,6 +31,12 @@ US Stock Scanner (Webull OpenAPI edition) - day-trade & long-term candidate scre
   行えていません。** 特に以下の箇所は、お手元で1回テスト実行して
   レスポンスの実際のJSON構造を確認し、`_parse_batch_bars_response` を
   調整してください。
+- **保有株(ポジション)分析機能について**: `fetch_holdings()` / `analyze_holdings()`
+  はWebull公式ドキュメント(Account List / Account Positions)に基づいて実装
+  していますが、こちらも同様に実機での動作確認ができていません。Trading API
+  はMarket Data APIとは別に権限付与が必要な場合があるため、401エラーになる
+  場合はApp KeyのTrading権限設定を確認してください。うまく動かない場合は
+  `SCAN_SKIP_HOLDINGS=1` を設定すればスキャン本体には影響しません。
 - **ファンダメンタルズ(決算日・PER・PBR・時価総額・アナリスト目標株価・
   セクター)はWebull OpenAPIでは取得できません**(実機確認済み。
   `data_client.market_data`/`data_client.screener` の利用可能メソッドを
@@ -66,11 +72,15 @@ US Stock Scanner (Webull OpenAPI edition) - day-trade & long-term candidate scre
     WEBULL_APP_SECRET
     WEBULL_REGION            (省略時 "us")
     WEBULL_API_ENDPOINT      (省略時 "api.webull.com"。sandboxなら "api.sandbox.webull.com")
+    WEBULL_TRADE_API_ENDPOINT (保有株取得用。省略時は WEBULL_API_ENDPOINT と同じロジックの既定値)
+    WEBULL_ACCOUNT_ID        (保有株を取得する口座IDを固定したい場合。省略時は口座一覧から自動取得)
+    SCAN_SKIP_HOLDINGS       (1/true/yes で保有株分析をスキップ。App Keyに未Trading権限の場合などに利用)
     GMAIL_USER / GMAIL_APP_PASSWORD / GMAIL_TO  (メール送信用、元スクリプトと同じ)
 """
 
 import os
 import sys
+import math
 import time
 import json
 import smtplib
@@ -100,6 +110,7 @@ from webull.core.client import ApiClient
 from webull.data.data_client import DataClient
 from webull.data.common.category import Category
 from webull.data.common.timespan import Timespan
+from webull.trade.trade_client import TradeClient
 
 
 # --------------------------------------------------------------------------
@@ -195,6 +206,368 @@ def build_webull_client() -> DataClient:
     api_client = ApiClient(app_key, app_secret, region)
     api_client.add_endpoint(region, endpoint)
     return DataClient(api_client)
+
+
+def build_webull_trade_client() -> TradeClient:
+    """
+    保有株(ポジション)取得用の Trading API クライアント。
+    Market Data API 用の build_webull_client() と同じ App Key/Secret/region を
+    使い回す前提だが、エンドポイントホストが Market Data API と異なる場合に
+    備えて WEBULL_TRADE_API_ENDPOINT で個別に上書きできるようにしてある
+    (未設定時は WEBULL_API_ENDPOINT のロジックと同じ既定値を使う)。
+    Trading API の利用には、Webull OpenAPI Management 側で Trading 権限が
+    有効になっている必要がある(Market Data権限のみのAppKeyでは401になる)。
+    """
+    app_key = os.environ.get("WEBULL_APP_KEY")
+    app_secret = os.environ.get("WEBULL_APP_SECRET")
+
+    region = os.environ.get("WEBULL_REGION")
+    if not region:
+        region = "jp" if app_key.startswith("jp.") else "us"
+
+    env = "test" if os.environ.get("WEBULL_USE_SANDBOX", "").lower() in ("1", "true", "yes") else "prod"
+    default_endpoint = _DEFAULT_ENDPOINTS.get(region, _DEFAULT_ENDPOINTS["us"])[env]
+    endpoint = os.environ.get("WEBULL_TRADE_API_ENDPOINT", os.environ.get("WEBULL_API_ENDPOINT", default_endpoint))
+
+    print(f"[info] Webull OpenAPI (Trading) region={region} endpoint={endpoint}")
+
+    api_client = ApiClient(app_key, app_secret, region)
+    api_client.add_endpoint(region, endpoint)
+    return TradeClient(api_client)
+
+
+def _to_float(v):
+    try:
+        if v is None:
+            return None
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _pick(d: dict, *keys):
+    """
+    dictから、複数の候補キー名のうち最初に見つかった「意味のある値」を返す。
+    Webull OpenAPIのレスポンスはSDKバージョン・エンドポイントによって
+    snake_case / camelCase / 別名(quantity, position など)が混在するため、
+    キー名を決め打ちすると保有数量などが None になってしまう。
+    ネストしたdict("position": {...} 等)も1段だけ再帰的に探索する。
+    """
+    if not isinstance(d, dict):
+        return None
+    lowered = {str(k).lower().replace("_", ""): v for k, v in d.items()}
+    for k in keys:
+        kk = str(k).lower().replace("_", "")
+        if kk in lowered:
+            v = lowered[kk]
+            if v is not None and v != "":
+                return v
+    # 1段だけネストを探索
+    for v in d.values():
+        if isinstance(v, dict):
+            got = _pick(v, *keys)
+            if got is not None:
+                return got
+    return None
+
+
+# 保有数量を表しうるキー名の候補(実機レスポンスの表記ゆれ対策)
+QTY_KEYS = (
+    "qty", "quantity", "position", "position_qty", "positionQty",
+    "holding_qty", "holdingQty", "holding_quantity", "holdingQuantity",
+    "shares", "share_qty", "total_qty", "totalQuantity", "total_quantity",
+    "available_qty", "availableQuantity", "available_quantity",
+    "long_qty", "longQuantity", "sellable_qty", "sellableQuantity",
+)
+UNIT_COST_KEYS = (
+    "unit_cost", "unitCost", "avg_cost", "avgCost", "average_cost", "averageCost",
+    "cost_price", "costPrice", "avg_price", "avgPrice", "open_price", "openPrice",
+)
+TOTAL_COST_KEYS = ("total_cost", "totalCost", "cost", "cost_amount", "costAmount", "position_cost", "positionCost")
+LAST_PRICE_KEYS = ("last_price", "lastPrice", "market_price", "marketPrice", "price", "close", "latest_price", "latestPrice")
+MARKET_VALUE_KEYS = ("market_value", "marketValue", "mkt_val", "mktVal", "position_value", "positionValue", "total_market_value")
+PL_KEYS = ("unrealized_profit_loss", "unrealizedProfitLoss", "unrealized_pl", "unrealizedPl", "unrealized_pnl", "unrealizedPnl", "float_profit_loss")
+PL_RATE_KEYS = ("unrealized_profit_loss_rate", "unrealizedProfitLossRate", "unrealized_pl_rate", "profit_loss_rate", "profitLossRate", "pl_ratio")
+SYMBOL_KEYS = ("symbol", "ticker", "tickerSymbol", "ticker_symbol", "disSymbol", "dis_symbol", "instrument_symbol")
+
+
+def _normalize_position(h: dict, account_id: str) -> dict:
+    """
+    生のポジションレスポンス1件を、表記ゆれを吸収した共通フォーマットに変換する。
+    数量が直接取れない場合は 評価額÷現在値 / 取得総額÷平均取得単価 から逆算する。
+    """
+    qty = _to_float(_pick(h, *QTY_KEYS))
+    unit_cost = _to_float(_pick(h, *UNIT_COST_KEYS))
+    total_cost = _to_float(_pick(h, *TOTAL_COST_KEYS))
+    last_price = _to_float(_pick(h, *LAST_PRICE_KEYS))
+    market_value = _to_float(_pick(h, *MARKET_VALUE_KEYS))
+    pl = _to_float(_pick(h, *PL_KEYS))
+    pl_rate = _to_float(_pick(h, *PL_RATE_KEYS))
+
+    # --- 数量の逆算(APIが数量を返さない/キー名が想定外だった場合の保険) ---
+    if not qty:
+        if market_value and last_price:
+            qty = market_value / last_price
+        elif total_cost and unit_cost:
+            qty = total_cost / unit_cost
+        if qty:
+            # 端株でなければ整数に丸める(浮動小数点誤差で 2.9999 等になるのを防ぐ)
+            if abs(qty - round(qty)) < 0.01:
+                qty = float(round(qty))
+            print(f"[info] {_pick(h, *SYMBOL_KEYS)}: 保有数量をAPIから直接取得できなかったため "
+                  f"評価額/単価から {qty} と逆算しました")
+
+    # --- 取得原価・評価額・含み損益の補完 ---
+    if total_cost is None and qty and unit_cost:
+        total_cost = qty * unit_cost
+    if unit_cost is None and qty and total_cost:
+        unit_cost = total_cost / qty
+    if market_value is None and qty and last_price:
+        market_value = qty * last_price
+    if pl is None and market_value is not None and total_cost is not None:
+        pl = market_value - total_cost
+    if pl_rate is None and total_cost:
+        pl_rate = (market_value - total_cost) / total_cost * 100 if market_value is not None else None
+
+    return {
+        "account_id": account_id,
+        "symbol": _pick(h, *SYMBOL_KEYS),
+        "instrument_id": _pick(h, "instrument_id", "instrumentId"),
+        "currency": _pick(h, "currency"),
+        "qty": qty,
+        "unit_cost": unit_cost,
+        "total_cost": total_cost,
+        "last_price": last_price,
+        "market_value": market_value,
+        "unrealized_profit_loss": pl,
+        "unrealized_profit_loss_rate": pl_rate,
+        "holding_proportion": _to_float(_pick(h, "holding_proportion", "holdingProportion")),
+        "raw_keys": sorted(h.keys()) if isinstance(h, dict) else [],
+    }
+
+
+def fetch_holdings() -> list[dict]:
+    """
+    Webull口座の保有株(ポジション)一覧を取得する。
+    - 環境変数 WEBULL_ACCOUNT_ID が設定されていればその口座のみ、未設定なら
+      get_account_list() で取得できる全口座を対象にする。
+    - 注意: このサンドボックス環境ではTrading APIを実際に呼び出しての動作確認が
+      できていません。公式ドキュメント(Account Positions)に基づき実装して
+      いますが、実際のSDKバージョンによって関数の引数名やレスポンスの
+      キー名(camelCase/snake_case等)が異なる可能性があります。エラーになる
+      場合は、実際のレスポンス内容を確認の上でこの関数を調整してください。
+    - 取得に失敗しても呼び出し側の処理を止めたくないため、例外は握りつぶし
+      空リストを返す。
+    """
+    try:
+        trade_client = build_webull_trade_client()
+
+        account_ids = []
+        forced_account_id = os.environ.get("WEBULL_ACCOUNT_ID")
+        if forced_account_id:
+            account_ids = [forced_account_id]
+        else:
+            acc_res = trade_client.account_v2.get_account_list()
+            if acc_res.status_code != 200:
+                print(f"[warn] 口座一覧の取得に失敗しました: {acc_res.status_code} {acc_res.text[:300]}")
+                return []
+            acc_json = acc_res.json()
+            acc_list = acc_json.get("data") if isinstance(acc_json, dict) else acc_json
+            for acc in (acc_list or []):
+                aid = acc.get("account_id") or acc.get("accountId") or acc.get("id")
+                if aid:
+                    account_ids.append(aid)
+
+        if not account_ids:
+            print("[warn] 有効な口座IDが見つかりませんでした(保有株分析をスキップします)")
+            return []
+
+        holdings_all = []
+        for account_id in account_ids:
+            last_instrument_id = None
+            page = 0
+            while True:
+                page += 1
+                try:
+                    if last_instrument_id:
+                        pos_res = trade_client.account_v2.get_account_position(
+                            account_id, page_size=100, last_instrument_id=last_instrument_id
+                        )
+                    else:
+                        pos_res = trade_client.account_v2.get_account_position(account_id, page_size=100)
+                except TypeError:
+                    # SDKバージョンによりキーワード引数を受け付けない場合のフォールバック
+                    pos_res = trade_client.account_v2.get_account_position(account_id)
+
+                if pos_res.status_code != 200:
+                    print(f"[warn] 保有株取得に失敗しました (account={account_id}): "
+                          f"{pos_res.status_code} {pos_res.text[:300]}")
+                    break
+
+                pos_json = pos_res.json()
+                # SDKバージョンによってレスポンス形式が
+                # {"holdings": [...], "has_next": bool} や {"data": [...]} の
+                # dict形式の場合と、[...] のようにholdingsの配列が直接返る
+                # list形式の場合がある(実機確認により後者のケースを確認済み)。
+                if isinstance(pos_json, list):
+                    raw_holdings = pos_json
+                    has_next = False  # list形式ではページング情報が無いため1ページのみ扱う
+                elif isinstance(pos_json, dict):
+                    raw_holdings = pos_json.get("holdings") or pos_json.get("data") or []
+                    # "data"キーの中にさらに配列ではなくdictが入れ子になっているケースへの保険
+                    if isinstance(raw_holdings, dict):
+                        raw_holdings = raw_holdings.get("holdings") or raw_holdings.get("list") or []
+                    has_next = bool(pos_json.get("has_next"))
+                else:
+                    raw_holdings = []
+                    has_next = False
+
+                for h in raw_holdings:
+                    if not isinstance(h, dict):
+                        continue
+                    if page == 1 and not holdings_all:
+                        # 実機レスポンスのキー名を1件だけログ出力しておく。
+                        # 数量が取れない場合、ここを見ればどのキー名かが分かる。
+                        print(f"[debug] ポジションのキー一覧: {sorted(h.keys())}")
+                    norm = _normalize_position(h, account_id)
+                    if norm.get("qty") in (None, 0):
+                        print(f"[warn] {norm.get('symbol')}: 保有数量を特定できませんでした。"
+                              f"レスポンスのキー: {norm.get('raw_keys')}")
+                    holdings_all.append(norm)
+
+                if not has_next or not raw_holdings or page > 20:
+                    break
+                last = raw_holdings[-1]
+                last_instrument_id = last.get("instrument_id") if isinstance(last, dict) else None
+                if not last_instrument_id:
+                    break
+
+        print(f"[info] 保有株取得: {len(holdings_all)}件 (口座数 {len(account_ids)})")
+        return holdings_all
+    except Exception as e:
+        print(f"[warn] 保有株の取得処理に失敗しました: {e}")
+        traceback.print_exc()
+        return []
+
+
+def analyze_holdings(data_client: DataClient, holdings: list[dict]) -> list[dict]:
+    """
+    保有株ごとに、スキャン本体と同じロジック(テクニカル指標・利益期待/リスク
+    スコア・現状/見立て/タイミングの解説文・値動き予想)を計算し、保有株固有の
+    情報(保有数量・平均取得単価・評価額・含み損益など)と合わせて返す。
+    保有株は銘柄数が少ないため、ユニバース全体のバッチ処理とは別に個別取得する。
+    """
+    symbols = sorted({h["symbol"] for h in holdings if h.get("symbol")})
+    if not symbols:
+        return []
+    print(f"[info] 保有株 {len(symbols)}銘柄の分析を開始します: {symbols}")
+
+    try:
+        history = download_history_batched(data_client, symbols)
+    except Exception as e:
+        print(f"[warn] 保有株の価格履歴取得に失敗しました: {e}")
+        history = {}
+
+    # 保有銘柄は「無条件で必ず調べる」対象なので、バッチ取得で欠落した銘柄は
+    # 個別に複数回再試行してでも取得を試みる(ユニバースの絞り込みとは無関係)。
+    missing_syms = [
+        s for s in symbols
+        if history.get(s) is None or (hasattr(history.get(s), "empty") and history[s].empty)
+    ]
+    if missing_syms:
+        print(f"[info] 保有株 {len(missing_syms)}銘柄は価格履歴が未取得のため個別に再試行します: {missing_syms}")
+        try:
+            retried = download_history_individual_retry(data_client, missing_syms)
+            history.update(retried)
+            still_missing = [s for s in missing_syms if s not in retried]
+            if still_missing:
+                print(f"[warn] 個別再試行後もなお価格履歴が取得できなかった保有銘柄: {still_missing}")
+        except Exception as e:
+            print(f"[warn] 保有株の個別再取得処理に失敗しました: {e}")
+
+    prefetch_fundamentals(symbols)
+
+    by_symbol_holdings = {}
+    for h in holdings:
+        by_symbol_holdings.setdefault(h["symbol"], []).append(h)
+
+    results = []
+    for sym in symbols:
+        # 同一銘柄が複数口座にまたがる場合は数量・評価額等を合算する
+        hs = by_symbol_holdings[sym]
+        qty_total = sum(h.get("qty") or 0 for h in hs)
+        cost_total = sum(h.get("total_cost") or 0 for h in hs)
+        mv_total = sum(h.get("market_value") or 0 for h in hs)
+        pl_total = sum(h.get("unrealized_profit_loss") or 0 for h in hs)
+        unit_cost = (cost_total / qty_total) if qty_total else (hs[0].get("unit_cost"))
+
+        df = history.get(sym)
+        row = compute_technical_row(sym, df) if df is not None else None
+        has_tech = row is not None
+        if row is None:
+            row = {"symbol": sym, "price": hs[0].get("last_price")}
+
+        # --- 数量・評価額の最終フォールバック ---
+        # ここまでで数量が取れていない場合、現在値と評価額から逆算する。
+        cur_price = row.get("price") or hs[0].get("last_price")
+        if not qty_total and mv_total and cur_price:
+            qty_total = mv_total / cur_price
+            if abs(qty_total - round(qty_total)) < 0.01:
+                qty_total = float(round(qty_total))
+        if not mv_total and qty_total and cur_price:
+            mv_total = qty_total * cur_price
+        if not cost_total and qty_total and unit_cost:
+            cost_total = qty_total * unit_cost
+        if not pl_total and mv_total and cost_total:
+            pl_total = mv_total - cost_total
+
+        pl_rate = ((mv_total - cost_total) / cost_total * 100) if cost_total else hs[0].get("unrealized_profit_loss_rate")
+
+        fund = fetch_fundamentals(sym)
+
+        if has_tech:
+            dt_opp, dt_risk = score_day_trade(row)
+            lt_opp, lt_risk = score_long_term(row, fund)
+            long_commentary = build_commentary(row, fund, "long")
+            day_commentary = build_commentary(row, fund, "day")
+            day_pred = predict_category(row, "day")
+            long_pred = predict_category(row, "long")
+        else:
+            dt_opp = dt_risk = lt_opp = lt_risk = None
+            note = "テクニカル指標を計算するための十分な価格履歴データが取得できませんでした。"
+            long_commentary = {"situation": note, "outlook": "—", "timing": "—"}
+            day_commentary = {"situation": note, "outlook": "—", "timing": "—"}
+            day_pred = long_pred = None
+
+        results.append({
+            **row,
+            **fund,
+            "is_holding": True,
+            "accounts": sorted({h.get("account_id") for h in hs if h.get("account_id")}),
+            "qty": qty_total or None,
+            "unit_cost": unit_cost,
+            "total_cost": cost_total or None,
+            "market_value": mv_total or None,
+            "unrealized_pl": pl_total or None,
+            "unrealized_pl_rate": pl_rate,
+            "currency": hs[0].get("currency"),
+            "day_opportunity": dt_opp,
+            "day_risk": dt_risk,
+            "long_opportunity": lt_opp,
+            "long_risk": lt_risk,
+            "day_situation": day_commentary["situation"],
+            "day_outlook": day_commentary["outlook"],
+            "day_timing": day_commentary["timing"],
+            "long_situation": long_commentary["situation"],
+            "long_outlook": long_commentary["outlook"],
+            "long_timing": long_commentary["timing"],
+            "day_prediction": day_pred,
+            "long_prediction": long_pred,
+        })
+
+    # 評価額の大きい順に並べる(評価額が取れない銘柄は末尾に)
+    results.sort(key=lambda r: (r.get("market_value") is None, -(r.get("market_value") or 0)))
+    return results
 
 
 # --------------------------------------------------------------------------
@@ -585,6 +958,10 @@ def _extract_invalid_symbols(err_msg: str) -> list[str]:
     return [s.strip() for s in m.group(1).split(",") if s.strip()]
 
 
+HISTORY_BATCH_MAX_RETRIES = 3   # 通信エラー/一時的な失敗時に、バッチ全体を再試行する回数
+HISTORY_BATCH_RETRY_SLEEP = 2.0  # 再試行前に待つ秒数(試行回数に応じて漸増)
+
+
 def download_history_batched(data_client: DataClient, tickers: list[str]) -> dict[str, pd.DataFrame]:
     timespan = _resolve_daily_timespan()
     out: dict[str, pd.DataFrame] = {}
@@ -592,57 +969,133 @@ def download_history_batched(data_client: DataClient, tickers: list[str]) -> dic
     invalid_symbols_seen = 0
 
     for i in range(0, n, BATCH_SIZE):
-        chunk = tickers[i:i + BATCH_SIZE]
+        original_chunk = tickers[i:i + BATCH_SIZE]
         if (i // BATCH_SIZE) % 20 == 0:
-            print(f"[info] downloading history {i}-{i + len(chunk)} / {n} (Webull OpenAPI)")
+            print(f"[info] downloading history {i}-{i + len(original_chunk)} / {n} (Webull OpenAPI)")
 
-        # 無効シンボル(Webull側に存在しない銘柄)を1件ずつ除外しながら再試行する。
-        # NASDAQ公式リスト/GitHubミラーにはあるがWebullが未対応の銘柄
-        # (一部ワラント・優先株・新規上場直後の銘柄など)が一定数混じるため必須。
-        for retry in range(BATCH_SIZE + 1):  # 最悪1件ずつ全部除外しても終わるようにする
+        chunk_result: dict[str, pd.DataFrame] = {}
+        parsed_any = False
+        aborted = False
+
+        # 通信エラー・一時的なHTTPエラーは、バッチ全体を最大 HISTORY_BATCH_MAX_RETRIES 回まで
+        # 再試行する(「価格履歴データが取得できませんでした」という判定になる前に、
+        # ネットワーク瞬断などの一時的な失敗をできるだけ吸収するため)。
+        for batch_attempt in range(1, HISTORY_BATCH_MAX_RETRIES + 1):
+            chunk = list(original_chunk)
+
+            # 無効シンボル(Webull側に存在しない銘柄)を1件ずつ除外しながら再試行する。
+            # NASDAQ公式リスト/GitHubミラーにはあるがWebullが未対応の銘柄
+            # (一部ワラント・優先株・新規上場直後の銘柄など)が一定数混じるため必須。
+            res = None
+            transient_error = False
+            for retry in range(BATCH_SIZE + 1):  # 最悪1件ずつ全部除外しても終わるようにする
+                if not chunk:
+                    break
+                try:
+                    res = data_client.market_data.get_batch_history_bar(
+                        chunk, Category.US_STOCK.name, timespan.name
+                    )
+                except Exception as e:
+                    msg = str(e)
+                    invalid = _extract_invalid_symbols(msg)
+                    if invalid:
+                        invalid_symbols_seen += len(invalid)
+                        chunk = [s for s in chunk if s not in invalid]
+                        continue  # 除外して同じバッチを再試行
+                    print(f"[warn] batch bars call failed for chunk starting {chunk[0]} "
+                          f"(attempt {batch_attempt}/{HISTORY_BATCH_MAX_RETRIES}): {e}")
+                    transient_error = True
+                    break
+                else:
+                    break
+
             if not chunk:
-                break
-            try:
-                res = data_client.market_data.get_batch_history_bar(
-                    chunk, Category.US_STOCK.name, timespan.name
-                )
-            except Exception as e:
-                msg = str(e)
-                invalid = _extract_invalid_symbols(msg)
-                if invalid:
-                    invalid_symbols_seen += len(invalid)
-                    chunk = [s for s in chunk if s not in invalid]
-                    continue  # 除外して同じバッチを再試行
-                print(f"[warn] batch bars call failed for chunk starting {chunk[0]}: {e}")
-                chunk = []
-                break
-            else:
+                break  # 除外の結果、対象が0件になった(このバッチは何も取得しない)
+
+            if transient_error:
+                if batch_attempt < HISTORY_BATCH_MAX_RETRIES:
+                    time.sleep(HISTORY_BATCH_RETRY_SLEEP * batch_attempt)
+                    continue  # バッチ全体を再試行
+                print(f"[warn] chunk starting {chunk[0]} は{HISTORY_BATCH_MAX_RETRIES}回再試行しましたが失敗しました")
+                aborted = True
                 break
 
-        if not chunk:
-            time.sleep(BATCH_SLEEP_SEC)
-            continue
+            if res is None:
+                break
 
-        if res.status_code == 403:
-            print("[error] 403: OpenAPIの市場データサブスクリプションが未契約の可能性があります。中断します。")
-            break
-        if res.status_code != 200:
-            print(f"[warn] batch bars HTTP {res.status_code} for chunk starting {chunk[0]}: {res.text[:300]}")
-            time.sleep(BATCH_SLEEP_SEC * 2)
-            continue
+            if res.status_code == 403:
+                print("[error] 403: OpenAPIの市場データサブスクリプションが未契約の可能性があります。中断します。")
+                aborted = True
+                break
+            if res.status_code != 200:
+                print(f"[warn] batch bars HTTP {res.status_code} for chunk starting {chunk[0]} "
+                      f"(attempt {batch_attempt}/{HISTORY_BATCH_MAX_RETRIES}): {res.text[:300]}")
+                if batch_attempt < HISTORY_BATCH_MAX_RETRIES:
+                    time.sleep(HISTORY_BATCH_RETRY_SLEEP * batch_attempt * 2)
+                    continue  # バッチ全体を再試行
+                print(f"[warn] chunk starting {chunk[0]} は{HISTORY_BATCH_MAX_RETRIES}回再試行しましたが失敗しました")
+                break
 
-        data = res.json()
-        chunk_result, parsed_any = _parse_batch_bars_response(data, chunk)
+            data = res.json()
+            chunk_result, parsed_any = _parse_batch_bars_response(data, chunk)
+            break  # 成功したのでリトライループを抜ける
+
+        if aborted and res is not None and getattr(res, "status_code", None) == 403:
+            break  # サブスクリプション未契約はリトライしても無駄なので全体を中断
+
         out.update(chunk_result)
 
         if not parsed_any and i == 0:
             # 最初のバッチだけ、解釈できなかった場合に生JSONの先頭を出す(デバッグ用)
-            print(f"[debug] batch bars response (raw, first 500 chars): {str(data)[:500]}")
+            try:
+                print(f"[debug] batch bars response (raw, first 500 chars): {str(res.json())[:500]}")
+            except Exception:
+                pass
 
         time.sleep(BATCH_SLEEP_SEC)
 
     if invalid_symbols_seen:
         print(f"[info] Webull非対応のため除外したシンボル数: {invalid_symbols_seen}")
+    return out
+
+
+def download_history_individual_retry(
+    data_client: DataClient, symbols: list[str], max_retries: int = 4, base_sleep: float = 1.5,
+) -> dict[str, pd.DataFrame]:
+    """
+    保有銘柄など「必ず調べたい」少数の銘柄向けに、1銘柄ずつ個別に価格履歴を
+    取得する。バッチ取得で失敗/欠落した銘柄に対して、無条件で複数回再試行する
+    ことで、一時的な通信エラーによる「データ取得できず」をできるだけ防ぐ。
+    """
+    if not symbols:
+        return {}
+    timespan = _resolve_daily_timespan()
+    out: dict[str, pd.DataFrame] = {}
+    for sym in symbols:
+        for attempt in range(1, max_retries + 1):
+            try:
+                res = data_client.market_data.get_batch_history_bar(
+                    [sym], Category.US_STOCK.name, timespan.name
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    chunk_result, parsed_any = _parse_batch_bars_response(data, [sym])
+                    if sym in chunk_result:
+                        out[sym] = chunk_result[sym]
+                        break
+                    raise RuntimeError("empty response for symbol")
+                elif res.status_code == 403:
+                    print("[error] 403: OpenAPIの市場データサブスクリプションが未契約の可能性があります。")
+                    return out
+                else:
+                    raise RuntimeError(f"HTTP {res.status_code}: {res.text[:200]}")
+            except Exception as e:
+                if attempt >= max_retries:
+                    print(f"[warn] {sym}: 個別再取得を{max_retries}回試みましたが取得できませんでした: {e}")
+                else:
+                    print(f"[info] {sym}: 価格履歴の再取得を試みます ({attempt}/{max_retries}回目): {e}")
+                    time.sleep(base_sleep * attempt)
+            time.sleep(BATCH_SLEEP_SEC)
     return out
 
 
@@ -671,41 +1124,125 @@ def download_history_batched(data_client: DataClient, tickers: list[str]) -> dic
 # 済みで動作する)を使い、ファンダメンタルズだけ yfinance(動作実績のある
 # 枯れたライブラリ)から取得するハイブリッド構成にしている。
 
-def fetch_fundamentals(symbol: str) -> dict:
-    """
-    アナリスト目標株価・時価総額・セクター・次回決算日・PER・PBR・
-    現金/有利子負債(ネットキャッシュ比率算出用)を yfinance から取得する。
-    """
-    result = {
-        "target_mean": None,
-        "market_cap": None,
-        "next_earnings": None,
-        "recommendation": None,
-        "sector": None,
-        "per": None,
-        "pbr": None,
-        "total_cash": None,
-        "total_debt": None,
-        "net_cash_ratio": None,
-    }
+# yfinanceのリトライ/警告ログ("No earnings dates found, symbol may be delisted" など)は
+# 大量の上場廃止・低流動性銘柄で延々と出力され、処理時間も体感を悪くするため抑制する。
+try:
+    import logging as _logging
+    _logging.getLogger("yfinance").setLevel(_logging.CRITICAL)
+except Exception:
+    pass
 
+# ファンダメンタルズのキャッシュ。
+# PER・時価総額・セクター・決算日は1日のうちにほとんど変化しないため、
+# 毎時のスキャンで毎回yfinanceを叩き直す必要がない。
+FUNDAMENTALS_CACHE_PATH = os.path.join(DATA_DIR, "fundamentals_cache.json")
+FUNDAMENTALS_CACHE_TTL_HOURS = float(os.environ.get("SCAN_FUNDAMENTALS_TTL_HOURS", "12"))
+# 決算日が取得できなかった銘柄(上場廃止・ADR・ETF等)を記録しておき、
+# しばらくの間は get_earnings_dates() を呼ばないようにする。ここが最大のボトルネック。
+NO_EARNINGS_TTL_HOURS = float(os.environ.get("SCAN_NO_EARNINGS_TTL_HOURS", "168"))  # 既定7日
+FUNDAMENTALS_WORKERS = int(os.environ.get("SCAN_FUNDAMENTALS_WORKERS", "8"))
+
+_fund_cache: dict | None = None
+_fund_cache_dirty = False
+
+
+def _now_ts() -> float:
+    return time.time()
+
+
+def _load_fundamentals_cache() -> dict:
+    global _fund_cache
+    if _fund_cache is not None:
+        return _fund_cache
+    try:
+        if os.path.exists(FUNDAMENTALS_CACHE_PATH) and os.path.getsize(FUNDAMENTALS_CACHE_PATH) > 0:
+            with open(FUNDAMENTALS_CACHE_PATH, "r", encoding="utf-8") as f:
+                _fund_cache = json.load(f)
+        else:
+            _fund_cache = {}
+    except Exception as e:
+        print(f"[warn] fundamentalsキャッシュの読み込みに失敗しました: {e}")
+        _fund_cache = {}
+    return _fund_cache
+
+
+def save_fundamentals_cache() -> None:
+    """スキャン終了時にキャッシュを書き出す(失敗しても処理は止めない)"""
+    global _fund_cache_dirty
+    if _fund_cache is None or not _fund_cache_dirty:
+        return
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        # 古すぎるエントリは捨てる(ファイルの肥大化防止)
+        cutoff = _now_ts() - max(FUNDAMENTALS_CACHE_TTL_HOURS, NO_EARNINGS_TTL_HOURS) * 3600 * 4
+        pruned = {k: v for k, v in _fund_cache.items() if (v.get("fetched_at") or 0) > cutoff}
+        _atomic_write_json(FUNDAMENTALS_CACHE_PATH, pruned)
+        _fund_cache_dirty = False
+        print(f"[info] fundamentalsキャッシュ保存: {len(pruned)}銘柄")
+    except Exception as e:
+        print(f"[warn] fundamentalsキャッシュの保存に失敗しました: {e}")
+
+
+EMPTY_FUNDAMENTALS = {
+    "target_mean": None,
+    "market_cap": None,
+    "next_earnings": None,
+    "recommendation": None,
+    "sector": None,
+    "per": None,
+    "pbr": None,
+    "total_cash": None,
+    "total_debt": None,
+    "net_cash_ratio": None,
+}
+
+
+def _earnings_from_info(info: dict) -> str | None:
+    """
+    info に含まれる決算日フィールドから次回決算日を取り出す。
+    ここで取れれば、低速な get_earnings_dates() を呼ばずに済む。
+    """
+    today = datetime.now().date()
+    candidates = []
+    for key in ("earningsTimestamp", "earningsTimestampStart", "earningsTimestampEnd"):
+        v = info.get(key)
+        if v:
+            try:
+                candidates.append(datetime.fromtimestamp(float(v)).date())
+            except (TypeError, ValueError, OSError):
+                continue
+    cal = info.get("earningsDate") or info.get("earnings_date")
+    if isinstance(cal, (list, tuple)):
+        for v in cal:
+            try:
+                candidates.append(pd.Timestamp(v).date())
+            except Exception:
+                continue
+    future = sorted(d for d in candidates if d >= today)
+    return future[0].strftime("%Y-%m-%d") if future else None
+
+
+def _fetch_fundamentals_uncached(symbol: str, skip_earnings_lookup: bool) -> dict:
+    result = dict(EMPTY_FUNDAMENTALS)
+    info = {}
     try:
         tk = yf.Ticker(symbol)
         info = tk.info or {}
-        result["target_mean"] = info.get("targetMeanPrice")
-        result["market_cap"] = info.get("marketCap")
-        result["recommendation"] = info.get("recommendationKey")
-        result["sector"] = info.get("sector")
-        # PERはtrailing優先、無ければforward。PBRはpriceToBook。
-        result["per"] = info.get("trailingPE") or info.get("forwardPE")
-        result["pbr"] = info.get("priceToBook")
-        result["total_cash"] = info.get("totalCash")
-        result["total_debt"] = info.get("totalDebt")
     except Exception as e:
         print(f"[warn] yfinance info fetch failed for {symbol}: {e}")
+        tk = None
+
+    result["target_mean"] = info.get("targetMeanPrice")
+    result["market_cap"] = info.get("marketCap")
+    result["recommendation"] = info.get("recommendationKey")
+    result["sector"] = info.get("sector")
+    # PERはtrailing優先、無ければforward。PBRはpriceToBook。
+    result["per"] = info.get("trailingPE") or info.get("forwardPE")
+    result["pbr"] = info.get("priceToBook")
+    result["total_cash"] = info.get("totalCash")
+    result["total_debt"] = info.get("totalDebt")
 
     # ネットキャッシュ比率 = (現金 - 有利子負債) / 時価総額
-    # プラスが大きいほど「実質無借金・現金余力が厚い」目安(あくまで簡易指標)
     if result["total_cash"] is not None and result["market_cap"]:
         net_cash = result["total_cash"] - (result["total_debt"] or 0)
         try:
@@ -713,17 +1250,96 @@ def fetch_fundamentals(symbol: str) -> dict:
         except (TypeError, ZeroDivisionError):
             result["net_cash_ratio"] = None
 
-    try:
-        tk = yf.Ticker(symbol)
-        cal = tk.get_earnings_dates(limit=4)
-        if cal is not None and not cal.empty:
-            future = cal[cal.index >= pd.Timestamp.now(tz=cal.index.tz)]
-            if not future.empty:
-                result["next_earnings"] = future.index[0].strftime("%Y-%m-%d")
-    except Exception as e:
-        print(f"[warn] yfinance earnings fetch failed for {symbol}: {e}")
+    # まず info から決算日を拾う(追加のHTTPリクエスト不要)
+    result["next_earnings"] = _earnings_from_info(info)
+
+    # info から取れず、かつ「決算日が無い銘柄」として記録されていない場合のみ
+    # 低速な get_earnings_dates() にフォールバックする。
+    # 上場廃止・ETF・ADR等では毎回失敗して時間を浪費するため、
+    # info自体が空(=実体が無い銘柄)ならここもスキップする。
+    looks_delisted = not info.get("marketCap") and not info.get("sector") and not info.get("shortName")
+    if result["next_earnings"] is None and not skip_earnings_lookup and not looks_delisted and tk is not None:
+        try:
+            cal = tk.get_earnings_dates(limit=4)
+            if cal is not None and not cal.empty:
+                future = cal[cal.index >= pd.Timestamp.now(tz=cal.index.tz)]
+                if not future.empty:
+                    result["next_earnings"] = future.index[0].strftime("%Y-%m-%d")
+        except Exception:
+            # 「No earnings dates found, symbol may be delisted」系はここに来る。
+            # 件数が多くログが埋まるため、個別の警告は出さない。
+            pass
 
     return result
+
+
+def fetch_fundamentals(symbol: str, force: bool = False) -> dict:
+    """
+    アナリスト目標株価・時価総額・セクター・次回決算日・PER・PBR・
+    現金/有利子負債(ネットキャッシュ比率算出用)を yfinance から取得する。
+
+    高速化のため:
+      - 取得結果を docs/data/fundamentals_cache.json にキャッシュ(既定12時間有効)
+      - 決算日が取れなかった銘柄は一定期間(既定7日)、低速な
+        get_earnings_dates() の呼び出しをスキップ
+    """
+    global _fund_cache_dirty
+    cache = _load_fundamentals_cache()
+    entry = cache.get(symbol)
+    now = _now_ts()
+
+    if entry and not force:
+        age_h = (now - (entry.get("fetched_at") or 0)) / 3600
+        if age_h < FUNDAMENTALS_CACHE_TTL_HOURS:
+            return {k: entry.get("data", {}).get(k) for k in EMPTY_FUNDAMENTALS}
+
+    skip_earnings = False
+    if entry and entry.get("no_earnings_at"):
+        if (now - entry["no_earnings_at"]) / 3600 < NO_EARNINGS_TTL_HOURS:
+            skip_earnings = True
+
+    data = _fetch_fundamentals_uncached(symbol, skip_earnings)
+
+    new_entry = {"fetched_at": now, "data": data}
+    if data.get("next_earnings") is None:
+        # 決算日が取れなかったことを記録(次回以降しばらくは問い合わせない)
+        new_entry["no_earnings_at"] = (entry or {}).get("no_earnings_at") or now
+    cache[symbol] = new_entry
+    _fund_cache_dirty = True
+    return data
+
+
+def prefetch_fundamentals(symbols: list[str], workers: int | None = None) -> None:
+    """
+    ファンダメンタルズを並列で先読みしてキャッシュに載せる。
+    yfinanceの呼び出しはネットワーク待ちが大半のため、逐次実行だと
+    銘柄数×数百msが丸ごと待ち時間になる。ここで並列化しておくと、
+    後続の fetch_fundamentals() はキャッシュヒットで即座に返る。
+    """
+    targets = [s for s in dict.fromkeys(symbols) if s]
+    if not targets:
+        return
+    workers = workers or FUNDAMENTALS_WORKERS
+    t0 = time.time()
+    done = 0
+    try:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = {ex.submit(fetch_fundamentals, s): s for s in targets}
+            for fut in as_completed(futures):
+                done += 1
+                try:
+                    fut.result()
+                except Exception:
+                    pass
+                if done % 50 == 0:
+                    print(f"[info] fundamentals {done}/{len(targets)} 件取得 "
+                          f"({time.time()-t0:.0f}秒経過)")
+    except Exception as e:
+        print(f"[warn] fundamentalsの並列取得に失敗したため逐次取得に切り替えます: {e}")
+        for s in targets:
+            fetch_fundamentals(s)
+    print(f"[info] fundamentals取得完了: {len(targets)}銘柄 / {time.time()-t0:.0f}秒")
 
 
 # --------------------------------------------------------------------------
@@ -1152,10 +1768,14 @@ def run_scan():
         f"(出来高上位{len(activity_top)} + S&P500 {len(sp500_rows)}、重複除去後)"
     )
 
+    # ファンダメンタルズを並列で先読みしておく(逐次取得だとここが最も時間を食う)
+    prefetch_fundamentals([r["symbol"] for _, r in shortlist.iterrows()])
+    save_fundamentals_cache()   # 途中で落ちても次回に取得結果を再利用できるよう保存
+
     candidates = []
     for _, row in shortlist.iterrows():
         sym = row["symbol"]
-        fund = fetch_fundamentals(sym)
+        fund = fetch_fundamentals(sym)  # 先読み済みなのでキャッシュから即返る
         row_d = row.to_dict()
         dt_opp, dt_risk = score_day_trade(row_d)
         lt_opp, lt_risk = score_long_term(row_d, fund)
@@ -1177,7 +1797,6 @@ def run_scan():
             "day_prediction": predict_category(row_d, "day"),
             "long_prediction": predict_category(row_d, "long"),
         })
-        time.sleep(0.3)
 
     cand_df = pd.DataFrame(candidates)
 
@@ -1293,11 +1912,65 @@ def render_row_major(r):
     </tr>"""
 
 
-def render_email_html(day_list, long_list, major_list, universe_size, scanned_size):
+def render_row_holding(r):
+    pl = r.get("unrealized_pl")
+    pl_color = "#188038" if (pl or 0) >= 0 else "#c5221f"
+    pl_rate = r.get("unrealized_pl_rate")
+    return f"""
+    <tr>
+      <td><b>{r['symbol']}</b></td>
+      <td>{fmt_num(r.get('qty'), 2)}</td>
+      <td>${fmt_num(r.get('unit_cost'))}</td>
+      <td>${fmt_num(r.get('price') or r.get('last_price'))}</td>
+      <td>${fmt_num(r.get('market_value'))}</td>
+      <td style="color:{pl_color}"><b>${fmt_num(pl)} ({fmt_pct(pl_rate)})</b></td>
+      <td><b>{r.get('long_prediction') or '—'}</b></td>
+      <td>{r.get('next_earnings') or '不明'}</td>
+      <td style="font-size:12px;">{r.get('long_situation','—')}</td>
+      <td style="font-size:12px;">{r.get('long_outlook','—')}</td>
+      <td style="font-size:12px;">{r.get('long_timing','—')}</td>
+    </tr>"""
+
+
+def render_email_html(day_list, long_list, major_list, universe_size, scanned_size, holdings_list=None):
+    holdings_list = holdings_list or []
     now = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M JST")
     day_rows = "".join(render_row_day(r) for r in day_list)
     long_rows = "".join(render_row_long(r) for r in long_list)
     major_rows = "".join(render_row_major(r) for r in major_list)
+    holding_rows = "".join(render_row_holding(r) for r in holdings_list)
+
+    if holdings_list:
+        total_mv = sum(r.get("market_value") or 0 for r in holdings_list)
+        total_pl = sum(r.get("unrealized_pl") or 0 for r in holdings_list)
+        total_cost = sum(r.get("total_cost") or 0 for r in holdings_list)
+        total_pl_rate = (total_pl / total_cost * 100) if total_cost else None
+        pl_color = "#188038" if total_pl >= 0 else "#c5221f"
+        holdings_section = f"""
+    <h3 style="margin-top:24px;">保有株の状況</h3>
+    <p style="font-size:12px;color:#666;">
+      評価額合計: ${fmt_num(total_mv)} / 含み損益合計:
+      <span style="color:{pl_color};"><b>${fmt_num(total_pl)} ({fmt_pct(total_pl_rate)})</b></span>
+      (Webull口座のポジション情報に基づく。取得できたテクニカル指標がある銘柄のみ「予想」欄が表示されます)
+    </p>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
+      <tr style="background:#222;color:#fff;">
+        <th>銘柄</th><th>保有数量</th><th>平均取得単価</th><th>現在値</th><th>評価額</th>
+        <th>含み損益</th><th>予想(1〜3ヶ月)</th><th>次回決算</th>
+        <th>現状</th><th>値動きの見立て</th><th>投資タイミングの目安</th>
+      </tr>
+      {holding_rows}
+    </table>
+    """
+    else:
+        holdings_section = """
+    <h3 style="margin-top:24px;">保有株の状況</h3>
+    <p style="font-size:12px;color:#666;">
+      保有株情報を取得できませんでした(Webull口座が未接続、Trading API権限が
+      無効、または保有株が無い可能性があります)。
+    </p>
+    """
+
     major_section = ""
     if major_list:
         major_section = f"""
@@ -1339,6 +2012,8 @@ def render_email_html(day_list, long_list, major_list, universe_size, scanned_si
     </p>
 
     {major_section}
+
+    {holdings_section}
 
     <h3 style="margin-top:24px;">デイトレード候補</h3>
     <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
@@ -1391,7 +2066,15 @@ def _json_safe(v):
     if isinstance(v, (datetime,)):
         return v.strftime("%Y-%m-%d")
     if isinstance(v, float):
-        return v
+        # inf/-inf も JSON では Infinity という非標準トークンになるため落とす
+        return v if math.isfinite(v) else None
+    # ネストしたdict/listも再帰的に処理する。
+    # (想定推移線 projection のような入れ子データにNaNが残ると、
+    #  ブラウザの JSON.parse が "Unexpected token 'N'" で失敗する)
+    if isinstance(v, dict):
+        return {k: _json_safe(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [_json_safe(x) for x in v]
     return v
 
 
@@ -1406,8 +2089,15 @@ def _atomic_write_json(path: str, obj) -> None:
     (open(path, "w") で直接書くと、途中失敗時にファイルが空になるバグがあった)。
     """
     tmp_path = f"{path}.tmp"
+    # allow_nan=False にして、NaN/Infinity が混ざったまま書き出されるのを防ぐ。
+    # Pythonの既定では NaN がそのまま出力されるが、これは不正なJSONで
+    # ブラウザ側の JSON.parse が失敗する。失敗した場合は再帰的に除去して書き直す。
+    try:
+        payload = json.dumps(obj, ensure_ascii=False, indent=2, allow_nan=False)
+    except ValueError:
+        payload = json.dumps(_json_safe(obj), ensure_ascii=False, indent=2, allow_nan=False)
     with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(obj, f, ensure_ascii=False, indent=2)
+        f.write(payload)
     os.replace(tmp_path, path)  # 同一ファイルシステム内でのrenameはアトミック
 
 
@@ -1428,11 +2118,14 @@ MAX_HISTORY_DAYS_KEPT = 200        # 日足履歴の保持日数(長期3ヶ月�
 MAX_INTRADAY_POINTS_KEPT = 200     # 当日イントラデイの保持ポイント数上限
 MAX_PREDICTIONS_LOG_KEPT = 8000    # 予想ログ全体の保持件数上限
 
+SIMULATION_PATH = os.path.join(DATA_DIR, "simulation.json")
+MAX_SIM_TRADES_KEPT = 3000
 
-def _watched_symbols(day_list, long_list, major_list) -> set[str]:
+
+def _watched_symbols(day_list, long_list, major_list, holdings_list=None) -> set[str]:
     return {
         r.get("symbol")
-        for r in (day_list + long_list + major_list)
+        for r in (day_list + long_list + major_list + (holdings_list or []))
         if r.get("symbol")
     }
 
@@ -1474,7 +2167,7 @@ def update_price_histories(history: dict, watched_symbols: set[str], run_dt: dat
         traceback.print_exc()
 
 
-def update_intraday_prices(day_list, long_list, major_list, run_dt: datetime) -> None:
+def update_intraday_prices(day_list, long_list, major_list, run_dt: datetime, holdings_list=None) -> None:
     """
     当日のイントラデイ株価点を data/intraday/<SYMBOL>.json に追記する。
     日付(JST)が変わったら自動的にリセットされる。分析タブの「1日」スケールの
@@ -1485,7 +2178,7 @@ def update_intraday_prices(day_list, long_list, major_list, run_dt: datetime) ->
         today_str = run_dt.strftime("%Y-%m-%d")
         ts_str = run_dt.strftime("%H:%M")
         latest_price = {}
-        for r in (day_list + long_list + major_list):
+        for r in (day_list + long_list + major_list + (holdings_list or [])):
             sym = r.get("symbol")
             price = r.get("price")
             if sym and price is not None:
@@ -1511,7 +2204,7 @@ def update_intraday_prices(day_list, long_list, major_list, run_dt: datetime) ->
         traceback.print_exc()
 
 
-def append_predictions_log(day_list, long_list, major_list, run_dt: datetime) -> None:
+def append_predictions_log(day_list, long_list, major_list, run_dt: datetime, holdings_list=None) -> None:
     """
     「いつ・どの銘柄に・どの予想をしたか」を1つのJSONファイル
     (data/predictions_log.json)に集約して追記する。分析タブはこのログと
@@ -1559,6 +2252,9 @@ def append_predictions_log(day_list, long_list, major_list, run_dt: datetime) ->
             _maybe_add(r, "day", "day_prediction")
         for r in (long_list + major_list):
             _maybe_add(r, "long", "long_prediction")
+        for r in (holdings_list or []):
+            _maybe_add(r, "day", "day_prediction")
+            _maybe_add(r, "long", "long_prediction")
 
         log["entries"].extend(_clean_records(new_entries))
         if MAX_PREDICTIONS_LOG_KEPT:
@@ -1570,7 +2266,520 @@ def append_predictions_log(day_list, long_list, major_list, run_dt: datetime) ->
         traceback.print_exc()
 
 
-def save_json_snapshot(day_list, long_list, major_list, universe_size, scanned_size) -> str | None:
+# --------------------------------------------------------------------------
+# 売買シミュレーション(予想に従って仮想的に売買するペーパートレード)
+# --------------------------------------------------------------------------
+#
+# ルール:
+#   - 買い: 予想が強気(値上がり系)の銘柄を、1回の注文につき銘柄ごと最大$10ぶん
+#     (端株)購入する。同じ銘柄をすでに保有していても、強気予想が出るたびに
+#     追加で$10ぶん買い増す。
+#   - 売り: 予想が弱気(値下がり系)に転じた銘柄は、保有数量の全量をいつでも
+#     売却できる(金額上限なし)。
+#   - 端株(単元未満株)の売買は、米国市場の通常取引時間中のみ実行する。
+#   - 実際の資金は動かさない、あくまで仮想的なシミュレーション。
+
+SIM_BULLISH = {"大きく値上がり", "少し値上がり"}
+SIM_BEARISH = {"大きく値下がり", "少し値下がり"}
+SIM_BUY_USD_PER_ORDER = 10.0
+
+
+def is_us_regular_market_hours(run_dt: datetime) -> bool:
+    """米国市場の通常取引時間(9:30-16:00 America/New_York, 平日)内かどうか。
+    祝日は考慮しない(簡易判定)。"""
+    try:
+        from zoneinfo import ZoneInfo
+        et = run_dt.astimezone(ZoneInfo("America/New_York"))
+    except Exception:
+        return False
+    if et.weekday() >= 5:
+        return False
+    open_t = et.replace(hour=9, minute=30, second=0, microsecond=0)
+    close_t = et.replace(hour=16, minute=0, second=0, microsecond=0)
+    return open_t <= et <= close_t
+
+
+def _sim_signal(r: dict) -> tuple[str | None, str | None]:
+    """行(銘柄)の予想から売買シグナルを判定する。戻り値: (action, kind)
+    action は 'buy' / 'sell' / None、kind は 'day' / 'long'。
+    day予想を優先し、なければlong予想・recommendationを見る。"""
+    day_pred = r.get("day_prediction")
+    long_pred = r.get("long_prediction")
+    rec = r.get("recommendation")
+
+    if day_pred in SIM_BULLISH:
+        return "buy", "day"
+    if long_pred in SIM_BULLISH:
+        return "buy", "long"
+    if rec == "buy":
+        return "buy", "day" if day_pred else "long"
+
+    if day_pred in SIM_BEARISH:
+        return "sell", "day"
+    if long_pred in SIM_BEARISH:
+        return "sell", "long"
+    if rec == "sell":
+        return "sell", "day" if day_pred else "long"
+
+    return None, None
+
+
+def _sim_load() -> dict:
+    """
+    内部の保有・取引状態(銘柄ごとの数量/簿価と、取引の生ログ)を読み込む。
+    公開用JSON(simulation.json)は表示用に整形済みのため、内部状態は
+    _positions_raw / _trades_raw フィールドから復元する。
+    """
+    try:
+        if os.path.exists(SIMULATION_PATH) and os.path.getsize(SIMULATION_PATH) > 0:
+            with open(SIMULATION_PATH, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            return {
+                "positions": raw.get("_positions_raw") or {},
+                "trades": raw.get("_trades_raw") or [],
+            }
+    except Exception as e:
+        print(f"[warn] simulation.json 読み込み失敗(新規作成します): {e}")
+    return {"positions": {}, "trades": []}
+
+
+def _load_history_file(sym: str) -> list[dict]:
+    path = os.path.join(HISTORY_DIR, f"{sym}.json")
+    try:
+        if os.path.exists(path) and os.path.getsize(path) > 0:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return []
+
+
+def _judge_entry_hit(entry: dict, hist: list[dict], day_offset: int | None, today_str: str) -> bool | None:
+    """
+    予想エントリの的中判定。day_offset を指定すると「予想日から day_offset 日後
+    までの範囲」で判定し(1/5/30日ごとの的中率用)、None なら horizon_end までの
+    全期間で判定する(全期間の的中率用)。判定に必要なデータがまだ揃っていない
+    場合は None を返す。
+    """
+    p0 = entry.get("price_at_prediction")
+    made = entry.get("made_date")
+    if p0 is None or not hist or not made:
+        return None
+    if day_offset is not None:
+        try:
+            made_dt = datetime.strptime(made, "%Y-%m-%d")
+        except Exception:
+            return None
+        end_str = (made_dt + timedelta(days=day_offset)).strftime("%Y-%m-%d")
+    else:
+        end_str = entry.get("horizon_end")
+    if not end_str or end_str > today_str:
+        return None  # まだ判定期間が終わっていない
+
+    pts = [h for h in hist if h.get("date") and made <= h["date"] <= end_str and h.get("close") is not None]
+    if not pts:
+        return None
+
+    category = entry.get("category") or ""
+    closes = [h["close"] for h in pts]
+    if "値上がり" in category:
+        return (max(closes) - p0) / p0 * 100 > 0
+    if "値下がり" in category:
+        return (min(closes) - p0) / p0 * 100 < 0
+    return max(abs((c - p0) / p0 * 100) for c in closes) < 3
+
+
+def compute_prediction_accuracy(run_dt: datetime) -> dict:
+    """予想ログ(predictions_log.json)の的中率を、全期間・1日後・5日後・30日後の
+    それぞれの時間軸で集計する。シミュレーションタブの「予想的中率」表示に使う。"""
+    out = {k: {"hits": 0, "total": 0, "rate": None} for k in ("all", "d1", "d5", "d30")}
+    try:
+        if not (os.path.exists(PREDICTIONS_LOG_PATH) and os.path.getsize(PREDICTIONS_LOG_PATH) > 0):
+            return out
+        with open(PREDICTIONS_LOG_PATH, "r", encoding="utf-8") as f:
+            log = json.load(f)
+        entries = log.get("entries", [])
+        today_str = run_dt.strftime("%Y-%m-%d")
+        hist_cache: dict[str, list[dict]] = {}
+
+        def get_hist(sym):
+            if sym not in hist_cache:
+                hist_cache[sym] = _load_history_file(sym)
+            return hist_cache[sym]
+
+        windows = {"all": None, "d1": 1, "d5": 5, "d30": 30}
+        for key, offset in windows.items():
+            hits = total = 0
+            for e in entries:
+                sym = e.get("symbol")
+                if not sym:
+                    continue
+                res = _judge_entry_hit(e, get_hist(sym), offset, today_str)
+                if res is None:
+                    continue
+                total += 1
+                hits += 1 if res else 0
+            out[key] = {"hits": hits, "total": total, "rate": round(hits / total * 100, 1) if total else None}
+    except Exception as e:
+        print(f"[warn] 予想的中率の集計に失敗しました: {e}")
+        traceback.print_exc()
+    return out
+
+
+def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datetime) -> None:
+    """
+    予想に従って仮想的に売買するシミュレーションを1ステップ進め、
+    data/simulation.json (保有ポジション・取引履歴・収支・的中率) を更新する。
+    失敗してもスキャン本体・メール送信は止めない。
+    """
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        state = _sim_load()
+        positions: dict = state.get("positions", {}) or {}
+        trades: list = state.get("trades", []) or []
+
+        regular_hours = is_us_regular_market_hours(run_dt)
+        ts = run_dt.strftime("%Y-%m-%d %H:%M:%S JST")
+
+        # 銘柄ごとに最新の行(価格・予想)を1件にまとめる(保有株の行を優先)
+        by_symbol: dict[str, dict] = {}
+        for r in (day_list or []) + (long_list or []) + (major_list or []):
+            sym = r.get("symbol")
+            if sym:
+                by_symbol.setdefault(sym, r)
+        for r in (holdings_list or []):
+            sym = r.get("symbol")
+            if sym:
+                by_symbol[sym] = r
+
+        if not regular_hours:
+            print("[info] simulation: 通常取引時間外のため端株の新規売買はスキップします(既存ポジションは維持)")
+        else:
+            for sym, r in by_symbol.items():
+                price = r.get("price")
+                if not price or price <= 0:
+                    continue
+                action, kind = _sim_signal(r)
+                if action is None:
+                    continue
+                pos = positions.get(sym, {"qty": 0.0, "cost": 0.0})
+
+                if action == "buy":
+                    qty = SIM_BUY_USD_PER_ORDER / price
+                    pos["qty"] = pos.get("qty", 0.0) + qty
+                    pos["cost"] = pos.get("cost", 0.0) + SIM_BUY_USD_PER_ORDER
+                    positions[sym] = pos
+                    trades.append({
+                        "time": ts, "symbol": sym, "side": "buy", "kind": kind,
+                        "price": price, "qty": qty, "amount": SIM_BUY_USD_PER_ORDER,
+                        "prediction": r.get("day_prediction") if kind == "day" else r.get("long_prediction"),
+                    })
+                elif action == "sell" and pos.get("qty", 0) > 1e-9:
+                    qty = pos["qty"]
+                    cost = pos.get("cost", 0.0)
+                    proceeds = qty * price
+                    trades.append({
+                        "time": ts, "symbol": sym, "side": "sell", "kind": kind,
+                        "price": price, "qty": qty, "amount": proceeds,
+                        "realized_pl": proceeds - cost,
+                        "prediction": r.get("day_prediction") if kind == "day" else r.get("long_prediction"),
+                    })
+                    positions[sym] = {"qty": 0.0, "cost": 0.0}
+
+        # 数量0のポジションは掃除する
+        positions = {s: p for s, p in positions.items() if (p.get("qty") or 0) > 1e-9}
+        if MAX_SIM_TRADES_KEPT:
+            trades = trades[-MAX_SIM_TRADES_KEPT:]
+
+        # --- 現在の評価額・収支サマリー ---
+        total_cost = 0.0
+        total_mv = 0.0
+        position_rows = []
+        for sym, pos in positions.items():
+            r = by_symbol.get(sym)
+            price = r.get("price") if r else None
+            qty = pos.get("qty", 0.0)
+            cost = pos.get("cost", 0.0)
+            mv = qty * price if price else None
+            total_cost += cost
+            if mv is not None:
+                total_mv += mv
+            position_rows.append({
+                "symbol": sym, "qty": qty, "avg_cost": (cost / qty) if qty else None,
+                "cost": cost, "price": price, "market_value": mv,
+                "pl": (mv - cost) if mv is not None else None,
+                "pl_pct": ((mv - cost) / cost * 100) if (mv is not None and cost) else None,
+            })
+        position_rows.sort(key=lambda x: -(x.get("market_value") or 0))
+
+        total_bought = sum(t.get("amount", 0) for t in trades if t.get("side") == "buy")
+        realized_pl_total = sum(t.get("realized_pl", 0) or 0 for t in trades if t.get("side") == "sell")
+        unrealized_pl_total = total_mv - total_cost
+        total_pl = realized_pl_total + unrealized_pl_total
+        total_pl_pct = (total_pl / total_bought * 100) if total_bought else None
+
+        accuracy = compute_prediction_accuracy(run_dt)
+
+        out = {
+            "updated_at": ts,
+            "regular_hours_last_run": regular_hours,
+            "positions": position_rows,
+            "trades": list(reversed(trades[-300:])),  # 新しい取引が先頭
+            "summary": {
+                "total_bought": round(total_bought, 4),
+                "total_cost_basis": round(total_cost, 4),
+                "total_market_value": round(total_mv, 4),
+                "realized_pl": round(realized_pl_total, 4),
+                "unrealized_pl": round(unrealized_pl_total, 4),
+                "total_pl": round(total_pl, 4),
+                "total_pl_pct": round(total_pl_pct, 2) if total_pl_pct is not None else None,
+            },
+            "accuracy": accuracy,
+        }
+        # positions/tradesはフルセットを別フィールドで保存(タブ側の再計算・追跡用)
+        out["_positions_raw"] = positions
+        out["_trades_raw"] = trades
+
+        _atomic_write_json(SIMULATION_PATH, out)
+        print(f"[info] simulation更新: 保有{len(position_rows)}銘柄 / 総損益 ${total_pl:.2f}"
+              + (f" ({total_pl_pct:.1f}%)" if total_pl_pct is not None else ""))
+    except Exception as e:
+        print(f"[warn] simulation更新に失敗しました: {e}")
+        traceback.print_exc()
+
+
+# --------------------------------------------------------------------------
+# 期待リターンの推定と「おすすめ銘柄」の選定
+# --------------------------------------------------------------------------
+#
+# 重要: 以下はスコア・モメンタム・アナリスト目標株価などから機械的に算出した
+# 「目安」であり、将来の利益を保証するものではありません(投資助言ではありません)。
+
+PREDICTION_BIAS = {
+    "大きく値上がり": 1.0,
+    "少し値上がり": 0.5,
+    "変動なし": 0.0,
+    "少し値下がり": -0.5,
+    "大きく値下がり": -1.0,
+}
+
+
+def _num(v, default=None):
+    """NaN/Inf/数値以外を弾いて float を返す(想定リターン計算にNaNを持ち込まないため)"""
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return default
+    return f if math.isfinite(f) else default
+
+
+def estimate_expected_return(row: dict, kind: str) -> float | None:
+    """
+    その銘柄の想定リターン(%)の目安を返す。
+    short: 5営業日程度、long: 3ヶ月程度を想定。
+      - 予想カテゴリの方向感 × 値幅(ATR/モメンタム)
+      - 利益期待スコアとリスクスコアの差
+      - 長期はアナリスト目標株価との乖離も加味
+    """
+    price = _num(row.get("price"))
+    if not price:
+        return None
+
+    if kind == "day":
+        bias = PREDICTION_BIAS.get(row.get("day_prediction"), 0.0)
+        atrp = _num(row.get("atr_pct"), 2.0) or 2.0
+        opp = _num(row.get("day_opportunity"), 50)
+        risk = _num(row.get("day_risk"), 50)
+        # 5営業日でATRの1.5倍程度を最大値幅として想定
+        base = bias * min(atrp, 12) * 1.5
+        edge = (opp - risk) / 100 * min(atrp, 12) * 0.8
+        return _num(round(base + edge, 2))
+
+    bias = PREDICTION_BIAS.get(row.get("long_prediction"), 0.0)
+    opp = _num(row.get("long_opportunity"), 50)
+    risk = _num(row.get("long_risk"), 50)
+    mom3 = _num(row.get("mom_3m"), 0)
+    base = bias * 8.0
+    edge = (opp - risk) / 100 * 10.0
+    trend = max(min(mom3, 40), -40) * 0.15
+    upside = 0.0
+    target = _num(row.get("target_mean"))
+    if target and price:
+        upside = max(min((target - price) / price * 100, 60), -30) * 0.25
+    return _num(round(base + edge + trend + upside, 2))
+
+
+def build_projection(price: float, exp_return_pct: float, points: int = 12) -> list[dict]:
+    """
+    期待リターンに向かって滑らかに推移する「想定利益の推移線」を生成する。
+    step: 0(現在)〜points(期間終了時)。value は想定株価、pct は現在値からの騰落率。
+    """
+    price = _num(price)
+    exp_return_pct = _num(exp_return_pct)
+    if not price or exp_return_pct is None:
+        return []
+    out = []
+    for i in range(points + 1):
+        t = i / points
+        # 直線ではなく、やや逓減するカーブ(初動が出て後半は緩む想定)
+        shaped = t ** 0.85
+        pct = exp_return_pct * shaped
+        out.append({"step": i, "pct": round(pct, 3), "value": round(price * (1 + pct / 100), 4)})
+    return out
+
+
+def attach_expectations(rows: list[dict]) -> list[dict]:
+    """各銘柄に想定リターンと想定推移線を付与する(閲覧ページの予測線表示用)"""
+    for r in rows or []:
+        try:
+            ed = estimate_expected_return(r, "day")
+            el = estimate_expected_return(r, "long")
+            r["exp_return_day_pct"] = ed
+            r["exp_return_long_pct"] = el
+            r["projection_day"] = build_projection(r.get("price"), ed, points=10)
+            r["projection_long"] = build_projection(r.get("price"), el, points=12)
+        except Exception:
+            continue
+    return rows or []
+
+
+def _rec_entry(r: dict, kind: str, reason: str) -> dict:
+    exp = r.get("exp_return_day_pct") if kind == "day" else r.get("exp_return_long_pct")
+    return {
+        "symbol": r.get("symbol"),
+        "price": r.get("price"),
+        "sector": r.get("sector"),
+        "kind": kind,
+        "expected_return_pct": exp,
+        "projection": r.get("projection_day") if kind == "day" else r.get("projection_long"),
+        "opportunity": r.get("day_opportunity") if kind == "day" else r.get("long_opportunity"),
+        "risk": r.get("day_risk") if kind == "day" else r.get("long_risk"),
+        "prediction": r.get("day_prediction") if kind == "day" else r.get("long_prediction"),
+        "next_earnings": r.get("next_earnings"),
+        "reason": reason,
+        "is_holding": bool(r.get("is_holding")),
+        "qty": r.get("qty"),
+    }
+
+
+def build_recommendations(day_list, long_list, major_list, holdings_list=None, top_n: int = 5) -> list[dict]:
+    """
+    複数の投資戦略ごとに「おすすめ銘柄」を選定して返す。
+    各戦略は {strategy, label, horizon, description, picks:[...]} の形。
+    """
+    day_list = day_list or []
+    long_list = long_list or []
+    major_list = major_list or []
+    holdings_list = holdings_list or []
+
+    def _srt(rows, key):
+        return sorted([r for r in rows if key(r) is not None], key=key, reverse=True)
+
+    strategies = []
+
+    # 1) 短期(デイトレ〜数日)
+    cand = [r for r in day_list if (r.get("exp_return_day_pct") or -99) > 0]
+    picks = _srt(cand, lambda r: r.get("exp_return_day_pct"))[:top_n]
+    strategies.append({
+        "strategy": "short_term",
+        "label": "短期(1〜5営業日)",
+        "horizon": "1〜5営業日",
+        "description": "値幅(ATR)と出来高が大きく、直近の方向感が上向きの銘柄。短時間で動く代わりに振れ幅も大きいため、ポジションは小さめに。",
+        "picks": [_rec_entry(r, "day", "値幅・出来高が大きく、短期の指標が上向き") for r in picks],
+    })
+
+    # 2) スイング(数週間): 短期の勢い × 長期の健全性
+    def _swing_score(r):
+        ed, el = r.get("exp_return_day_pct"), r.get("exp_return_long_pct")
+        if ed is None or el is None:
+            return None
+        return ed * 0.4 + el * 0.6 - (r.get("day_risk") or 50) * 0.05
+    pool = {r.get("symbol"): r for r in (day_list + long_list)}.values()
+    picks = _srt([r for r in pool if r.get("above_sma50")], _swing_score)[:top_n]
+    strategies.append({
+        "strategy": "swing",
+        "label": "スイング(数週間)",
+        "horizon": "2〜6週間",
+        "description": "中期のトレンド(50日線の上)を維持しつつ、短期の勢いも出ている銘柄。押し目を待って分割で入る前提。",
+        "picks": [_rec_entry(r, "long", "50日線の上でトレンド継続、短期の勢いも良好") for r in picks],
+    })
+
+    # 3) 長期・成長
+    picks = _srt([r for r in long_list if r.get("above_sma200") is not False],
+                 lambda r: r.get("exp_return_long_pct"))[:top_n]
+    strategies.append({
+        "strategy": "long_growth",
+        "label": "長期・成長期待",
+        "horizon": "3ヶ月〜1年",
+        "description": "モメンタムとアナリスト目標株価の乖離から、中長期の上値余地が見込める銘柄。決算をまたぐ前提でポジションを取る想定。",
+        "picks": [_rec_entry(r, "long", "中長期トレンドが良好で目標株価との乖離も大きい") for r in picks],
+    })
+
+    # 4) 積み立て(低リスク・主要企業)
+    def _accum_score(r):
+        opp = r.get("long_opportunity")
+        risk = r.get("long_risk")
+        if opp is None or risk is None:
+            return None
+        mc = r.get("market_cap") or 0
+        if mc < 10_000_000_000:
+            return None  # コア資産は大型株に限定する
+        size_bonus = 10 if mc > 50_000_000_000 else 5
+        stable = 10 if r.get("above_sma200") else 0
+        return opp - risk * 1.2 + size_bonus + stable
+    picks = _srt(major_list + long_list, _accum_score)[:top_n]
+    strategies.append({
+        "strategy": "accumulate",
+        "label": "長期積み立て(コア)",
+        "horizon": "1年以上・毎月積み立て",
+        "description": "時価総額が大きくリスクスコアが低い、値動きが比較的安定した銘柄。毎月一定額を買い付けるコア資産向け。",
+        "picks": [_rec_entry(r, "long", "大型でリスクが低く、長期の積み立てに向く") for r in picks],
+    })
+
+    # 5) 逆張り(売られすぎ)
+    def _dip_score(r):
+        rsi = r.get("rsi14")
+        if rsi is None or rsi > 40:
+            return None
+        return (40 - rsi) + (r.get("long_opportunity") or 0) * 0.3
+    picks = _srt(day_list + long_list + major_list, _dip_score)[:top_n]
+    strategies.append({
+        "strategy": "contrarian",
+        "label": "逆張り(売られすぎ)",
+        "horizon": "2週間〜3ヶ月",
+        "description": "RSIが低く短期的に売られすぎの水準にある銘柄。下降トレンドが続くリスクもあるため、反転の兆し(出来高増・MACD)を確認してから。",
+        "picks": [_rec_entry(r, "long", "RSIが低く売られすぎ水準からの反発余地") for r in picks],
+    })
+
+    # 6) 保有株のアクション(買い増し/保持/利確・撤退の目安)
+    hold_picks = []
+    for r in sorted(holdings_list, key=lambda x: -(x.get("market_value") or 0)):
+        el = r.get("exp_return_long_pct")
+        plr = r.get("unrealized_pl_rate")
+        if el is None:
+            action = "様子見"
+        elif el >= 6:
+            action = "買い増し検討"
+        elif el <= -6:
+            action = "利確・縮小検討"
+        else:
+            action = "保持"
+        reason = f"想定リターン {el if el is not None else '—'}% / 含み損益 {round(plr,1) if plr is not None else '—'}%"
+        e = _rec_entry(r, "long", reason)
+        e["action"] = action
+        hold_picks.append(e)
+    strategies.append({
+        "strategy": "holdings_action",
+        "label": "保有株のアクション目安",
+        "horizon": "保有中",
+        "description": "現在保有している銘柄について、スコアと想定リターンから買い増し/保持/縮小の目安を示します。",
+        "picks": hold_picks,
+    })
+
+    return strategies
+
+
+def save_json_snapshot(day_list, long_list, major_list, universe_size, scanned_size, holdings_list=None) -> str | None:
     """
     スキャン結果をJSONスナップショットとして data/ に保存し、
     data/index.json (スナップショット一覧) を更新する。
@@ -1586,6 +2795,13 @@ def save_json_snapshot(day_list, long_list, major_list, universe_size, scanned_s
         filename = f"scan_{run_id}.json"
         filepath = os.path.join(DATA_DIR, filename)
 
+        # 想定リターン・想定推移線を各銘柄に付与し、戦略別おすすめを組み立てる
+        day_list = attach_expectations(day_list)
+        long_list = attach_expectations(long_list)
+        major_list = attach_expectations(major_list)
+        holdings_list = attach_expectations(holdings_list or [])
+        recommendations = build_recommendations(day_list, long_list, major_list, holdings_list)
+
         snapshot = {
             "run_id": run_id,
             "generated_at_jst": now.strftime("%Y-%m-%d %H:%M:%S JST"),
@@ -1594,6 +2810,8 @@ def save_json_snapshot(day_list, long_list, major_list, universe_size, scanned_s
             "day_trade": _clean_records(day_list),
             "long_term": _clean_records(long_list),
             "major": _clean_records(major_list),
+            "holdings": _clean_records(holdings_list or []),
+            "recommendations": recommendations,
         }
         _atomic_write_json(filepath, snapshot)
 
@@ -1654,17 +2872,43 @@ def send_email(html_body: str) -> bool:
 def main():
     try:
         day_list, long_list, major_list, universe, scanned_size, history = run_scan()
-        html = render_email_html(day_list, long_list, major_list, len(universe), scanned_size)
+
+        # 保有株(Webull口座のポジション)分析。失敗してもスキャン本体は止めない。
+        # 保有株はユニバースの絞り込み結果に関係なく、必ず全銘柄を個別に分析する。
+        holdings_list = []
+        if os.environ.get("SCAN_SKIP_HOLDINGS", "").lower() not in ("1", "true", "yes"):
+            try:
+                holdings_raw = fetch_holdings()
+                if holdings_raw:
+                    holdings_data_client = build_webull_client()
+                    holdings_list = analyze_holdings(holdings_data_client, holdings_raw)
+                    missing_qty = [h.get("symbol") for h in holdings_list if not h.get("qty")]
+                    if missing_qty:
+                        print(f"[warn] 保有数量が取得できなかった銘柄: {missing_qty}")
+                    print(f"[info] 保有株 {len(holdings_list)}銘柄を個別に分析しました "
+                          f"(ユニバースの絞り込みとは独立)")
+                else:
+                    print("[info] 保有株は0件でした")
+            except Exception as e:
+                print(f"[warn] 保有株分析に失敗しました: {e}")
+                traceback.print_exc()
+
+        html = render_email_html(day_list, long_list, major_list, len(universe), scanned_size, holdings_list)
 
         # Web閲覧ページ(GitHub Pages)用にJSONスナップショットを保存
-        save_json_snapshot(day_list, long_list, major_list, len(universe), scanned_size)
+        save_json_snapshot(day_list, long_list, major_list, len(universe), scanned_size, holdings_list)
 
         # 分析タブ用: 株価履歴・予想ログを更新(失敗してもメール送信は止めない)
         run_dt = datetime.now(timezone(timedelta(hours=9)))
-        watched = _watched_symbols(day_list, long_list, major_list)
+        watched = _watched_symbols(day_list, long_list, major_list, holdings_list)
         update_price_histories(history, watched, run_dt)
-        update_intraday_prices(day_list, long_list, major_list, run_dt)
-        append_predictions_log(day_list, long_list, major_list, run_dt)
+        update_intraday_prices(day_list, long_list, major_list, run_dt, holdings_list)
+        append_predictions_log(day_list, long_list, major_list, run_dt, holdings_list)
+
+        # 売買シミュレーション(予想に従った仮想売買)を1ステップ進める
+        run_simulation(day_list, long_list, major_list, holdings_list, run_dt)
+
+        save_fundamentals_cache()
 
         sent = False
         try:
