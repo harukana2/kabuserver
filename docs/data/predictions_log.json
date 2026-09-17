@@ -1520,6 +1520,609 @@
       "horizon_end": "2026-12-21",
       "category": "少し値上がり",
       "price_at_prediction": 213.9
+    },
+    {
+      "symbol": "MEDS",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 6.07
+    },
+    {
+      "symbol": "BBNX",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 22.18
+    },
+    {
+      "symbol": "ALHC",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値下がり",
+      "price_at_prediction": 8.71
+    },
+    {
+      "symbol": "AEHL",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 9.22
+    },
+    {
+      "symbol": "FTFT",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 7.0
+    },
+    {
+      "symbol": "SWMR",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値下がり",
+      "price_at_prediction": 25.11
+    },
+    {
+      "symbol": "TEVA",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 38.53
+    },
+    {
+      "symbol": "JBHT",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値下がり",
+      "price_at_prediction": 236.73
+    },
+    {
+      "symbol": "BIAF",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値下がり",
+      "price_at_prediction": 5.35
+    },
+    {
+      "symbol": "BRUN",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値下がり",
+      "price_at_prediction": 15.16
+    },
+    {
+      "symbol": "RCAT",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値下がり",
+      "price_at_prediction": 7.095
+    },
+    {
+      "symbol": "FANG",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値下がり",
+      "price_at_prediction": 194.54
+    },
+    {
+      "symbol": "ALMS",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値下がり",
+      "price_at_prediction": 7.94
+    },
+    {
+      "symbol": "XHLD",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 9.65
+    },
+    {
+      "symbol": "FPS",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "少し値下がり",
+      "price_at_prediction": 34.84
+    },
+    {
+      "symbol": "CRM",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 250.1
+    },
+    {
+      "symbol": "DVN",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 48.44
+    },
+    {
+      "symbol": "MOS",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 24.79
+    },
+    {
+      "symbol": "RVTY",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 145.73
+    },
+    {
+      "symbol": "VEEV",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 264.9
+    },
+    {
+      "symbol": "SMCI",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "少し値上がり",
+      "price_at_prediction": 36.85
+    },
+    {
+      "symbol": "CTSH",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 61.85
+    },
+    {
+      "symbol": "MPC",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 413.92
+    },
+    {
+      "symbol": "META",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 673.31
+    },
+    {
+      "symbol": "APA",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 44.79
+    },
+    {
+      "symbol": "SWKS",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 85.59
+    },
+    {
+      "symbol": "JKHY",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "少し値上がり",
+      "price_at_prediction": 158.98
+    },
+    {
+      "symbol": "CNC",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 66.01
+    },
+    {
+      "symbol": "T",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 25.86
+    },
+    {
+      "symbol": "HPQ",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 32.7
+    },
+    {
+      "symbol": "IRD",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 5.41
+    },
+    {
+      "symbol": "SSL",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 14.29
+    },
+    {
+      "symbol": "SBET",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 7.98
+    },
+    {
+      "symbol": "XP",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 19.76
+    },
+    {
+      "symbol": "ARCT",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 15.6
+    },
+    {
+      "symbol": "BMNR",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 22.81
+    },
+    {
+      "symbol": "SIG",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 102.94
+    },
+    {
+      "symbol": "SMMT",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 17.3
+    },
+    {
+      "symbol": "ANF",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 139.89
+    },
+    {
+      "symbol": "HNI",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 46.21
+    },
+    {
+      "symbol": "INSP",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 72.75
+    },
+    {
+      "symbol": "HRMY",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 42.21
+    },
+    {
+      "symbol": "PGEN",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 7.435
+    },
+    {
+      "symbol": "PURR",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "少し値上がり",
+      "price_at_prediction": 11.44
+    },
+    {
+      "symbol": "TRMD",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 36.6
+    },
+    {
+      "symbol": "CRM",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 250.1
+    },
+    {
+      "symbol": "DVN",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 48.44
+    },
+    {
+      "symbol": "MOS",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 24.79
+    },
+    {
+      "symbol": "RVTY",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 145.73
+    },
+    {
+      "symbol": "VEEV",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 264.9
+    },
+    {
+      "symbol": "SMCI",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 36.85
+    },
+    {
+      "symbol": "CTSH",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 61.85
+    },
+    {
+      "symbol": "MPC",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 413.92
+    },
+    {
+      "symbol": "META",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 673.31
+    },
+    {
+      "symbol": "APA",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 44.79
+    },
+    {
+      "symbol": "SWKS",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 85.59
+    },
+    {
+      "symbol": "JKHY",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 158.98
+    },
+    {
+      "symbol": "CNC",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 66.01
+    },
+    {
+      "symbol": "T",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 25.86
+    },
+    {
+      "symbol": "HPQ",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 32.7
+    },
+    {
+      "symbol": "IRD",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "大きく値上がり",
+      "price_at_prediction": 5.41
+    },
+    {
+      "symbol": "MSFT",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "少し値上がり",
+      "price_at_prediction": 490.3
+    },
+    {
+      "symbol": "MSFT",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値上がり",
+      "price_at_prediction": 490.3
+    },
+    {
+      "symbol": "ORCL",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "少し値下がり",
+      "price_at_prediction": 143.16
+    },
+    {
+      "symbol": "ORCL",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "大きく値下がり",
+      "price_at_prediction": 143.16
+    },
+    {
+      "symbol": "NVDA",
+      "kind": "day",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-09-25",
+      "category": "変動なし",
+      "price_at_prediction": 213.9
+    },
+    {
+      "symbol": "NVDA",
+      "kind": "long",
+      "made_date": "2026-09-18",
+      "made_at": "2026-09-18 00:08:55 JST",
+      "horizon_end": "2026-12-22",
+      "category": "少し値上がり",
+      "price_at_prediction": 213.9
     }
   ]
 }
