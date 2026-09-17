@@ -1,79 +1,149 @@
 {
-  "updated_at": "2026-09-17 21:08:27 JST",
+  "updated_at": "2026-09-17 22:08:51 JST",
   "regular_hours_last_run": false,
   "positions": [
     {
       "symbol": "MEDS",
-      "qty": 4.942339373970346,
+      "qty": 6.589785831960461,
       "avg_cost": 6.07,
-      "cost": 30.0,
+      "cost": 40.0,
       "price": 6.07,
-      "market_value": 30.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "FTFT",
-      "qty": 4.285714285714286,
-      "avg_cost": 7.0,
-      "cost": 30.0,
-      "price": 7.0,
-      "market_value": 30.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "SBET",
-      "qty": 3.7593984962406015,
-      "avg_cost": 7.9799999999999995,
-      "cost": 30.0,
-      "price": 7.98,
-      "market_value": 30.0,
+      "market_value": 40.0,
       "pl": 0.0,
       "pl_pct": 0.0
     },
     {
       "symbol": "AEHL",
-      "qty": 3.253796095444685,
+      "qty": 4.338394793926247,
       "avg_cost": 9.22,
-      "cost": 30.0,
+      "cost": 40.0,
       "price": 9.22,
-      "market_value": 29.999999999999996,
-      "pl": -3.552713678800501e-15,
-      "pl_pct": -1.1842378929335004e-14
+      "market_value": 40.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "FTFT",
+      "qty": 5.714285714285714,
+      "avg_cost": 7.0,
+      "cost": 40.0,
+      "price": 7.0,
+      "market_value": 40.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
     },
     {
       "symbol": "XHLD",
-      "qty": 3.10880829015544,
-      "avg_cost": 9.650000000000002,
-      "cost": 30.0,
+      "qty": 4.1450777202072535,
+      "avg_cost": 9.65,
+      "cost": 40.0,
       "price": 9.65,
-      "market_value": 29.999999999999996,
-      "pl": -3.552713678800501e-15,
-      "pl_pct": -1.1842378929335004e-14
+      "market_value": 40.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
     },
     {
       "symbol": "IRD",
-      "qty": 5.5452865064695,
-      "avg_cost": 5.410000000000001,
-      "cost": 30.0,
+      "qty": 7.393715341959334,
+      "avg_cost": 5.41,
+      "cost": 40.0,
       "price": 5.41,
-      "market_value": 29.999999999999996,
-      "pl": -3.552713678800501e-15,
-      "pl_pct": -1.1842378929335004e-14
+      "market_value": 40.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "SBET",
+      "qty": 5.012531328320802,
+      "avg_cost": 7.98,
+      "cost": 40.0,
+      "price": 7.98,
+      "market_value": 40.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
     },
     {
       "symbol": "PGEN",
-      "qty": 4.034969737726967,
-      "avg_cost": 7.4350000000000005,
-      "cost": 30.0,
+      "qty": 5.379959650302623,
+      "avg_cost": 7.435,
+      "cost": 40.0,
       "price": 7.435,
-      "market_value": 29.999999999999996,
-      "pl": -3.552713678800501e-15,
-      "pl_pct": -1.1842378929335004e-14
+      "market_value": 40.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
     }
   ],
   "trades": [
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "PGEN",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.435,
+      "qty": 1.3449899125756557,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "SBET",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.98,
+      "qty": 1.2531328320802004,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "IRD",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.41,
+      "qty": 1.8484288354898335,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "XHLD",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.65,
+      "qty": 1.0362694300518134,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "FTFT",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.0,
+      "qty": 1.4285714285714286,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "AEHL",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.22,
+      "qty": 1.0845986984815617,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "MEDS",
+      "side": "buy",
+      "kind": "day",
+      "price": 6.07,
+      "qty": 1.6474464579901154,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
     {
       "time": "2026-09-17 21:08:27 JST",
       "symbol": "PGEN",
@@ -286,9 +356,9 @@
     }
   ],
   "summary": {
-    "total_bought": 210.0,
-    "total_cost_basis": 210.0,
-    "total_market_value": 210.0,
+    "total_bought": 280.0,
+    "total_cost_basis": 280.0,
+    "total_market_value": 280.0,
     "realized_pl": 0,
     "unrealized_pl": 0.0,
     "total_pl": 0.0,
@@ -318,32 +388,32 @@
   },
   "_positions_raw": {
     "MEDS": {
-      "qty": 4.942339373970346,
-      "cost": 30.0
+      "qty": 6.589785831960461,
+      "cost": 40.0
     },
     "AEHL": {
-      "qty": 3.253796095444685,
-      "cost": 30.0
+      "qty": 4.338394793926247,
+      "cost": 40.0
     },
     "FTFT": {
-      "qty": 4.285714285714286,
-      "cost": 30.0
+      "qty": 5.714285714285714,
+      "cost": 40.0
     },
     "XHLD": {
-      "qty": 3.10880829015544,
-      "cost": 30.0
+      "qty": 4.1450777202072535,
+      "cost": 40.0
     },
     "IRD": {
-      "qty": 5.5452865064695,
-      "cost": 30.0
+      "qty": 7.393715341959334,
+      "cost": 40.0
     },
     "SBET": {
-      "qty": 3.7593984962406015,
-      "cost": 30.0
+      "qty": 5.012531328320802,
+      "cost": 40.0
     },
     "PGEN": {
-      "qty": 4.034969737726967,
-      "cost": 30.0
+      "qty": 5.379959650302623,
+      "cost": 40.0
     }
   },
   "_trades_raw": [
@@ -549,6 +619,76 @@
     },
     {
       "time": "2026-09-17 21:08:27 JST",
+      "symbol": "PGEN",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.435,
+      "qty": 1.3449899125756557,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "MEDS",
+      "side": "buy",
+      "kind": "day",
+      "price": 6.07,
+      "qty": 1.6474464579901154,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "AEHL",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.22,
+      "qty": 1.0845986984815617,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "FTFT",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.0,
+      "qty": 1.4285714285714286,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "XHLD",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.65,
+      "qty": 1.0362694300518134,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "IRD",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.41,
+      "qty": 1.8484288354898335,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
+      "symbol": "SBET",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.98,
+      "qty": 1.2531328320802004,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-17 22:08:51 JST",
       "symbol": "PGEN",
       "side": "buy",
       "kind": "day",
