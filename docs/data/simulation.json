@@ -1,26 +1,26 @@
 {
-  "updated_at": "2026-09-18 09:52:02 JST",
+  "updated_at": "2026-09-18 10:07:52 JST",
   "regular_hours_last_run": false,
   "positions": [
     {
       "symbol": "SBET",
-      "qty": 19.837729918015377,
-      "avg_cost": 8.065438972162742,
-      "cost": 160.0,
+      "qty": 21.04838367104201,
+      "avg_cost": 8.076629667003028,
+      "cost": 170.0,
       "price": 8.26,
-      "market_value": 163.859649122807,
+      "market_value": 173.859649122807,
       "pl": 3.8596491228070136,
-      "pl_pct": 2.4122807017543835
+      "pl_pct": 2.270381836945302
     },
     {
       "symbol": "IRD",
-      "qty": 29.802414160085142,
-      "avg_cost": 5.368692587806883,
-      "cost": 160.0,
+      "qty": 31.696353554024537,
+      "avg_cost": 5.36339297548045,
+      "cost": 170.0,
       "price": 5.28,
-      "market_value": 157.35674676524957,
+      "market_value": 167.35674676524957,
       "pl": -2.643253234750432,
-      "pl_pct": -1.6520332717190203
+      "pl_pct": -1.5548548439708423
     },
     {
       "symbol": "AEHL",
@@ -213,6 +213,86 @@
       "pl_pct": 0.5780346820809374
     },
     {
+      "symbol": "DAIC",
+      "qty": 11.320754716981133,
+      "avg_cost": 5.3,
+      "cost": 60.0,
+      "price": 5.3,
+      "market_value": 60.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "AEMD",
+      "qty": 8.849557522123893,
+      "avg_cost": 6.78,
+      "cost": 60.0,
+      "price": 6.78,
+      "market_value": 60.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "USDE",
+      "qty": 7.782101167315175,
+      "avg_cost": 7.71,
+      "cost": 60.0,
+      "price": 7.71,
+      "market_value": 60.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "VEEA",
+      "qty": 11.25703564727955,
+      "avg_cost": 5.33,
+      "cost": 60.0,
+      "price": 5.33,
+      "market_value": 60.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "ABSI",
+      "qty": 6.472491909385114,
+      "avg_cost": 9.27,
+      "cost": 60.0,
+      "price": 9.27,
+      "market_value": 60.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "NVAX",
+      "qty": 6.0,
+      "avg_cost": 10.0,
+      "cost": 60.0,
+      "price": 10.0,
+      "market_value": 60.0,
+      "pl": 0.0,
+      "pl_pct": 0.0
+    },
+    {
+      "symbol": "PAGS",
+      "qty": 6.276150627615062,
+      "avg_cost": 9.560000000000002,
+      "cost": 60.0,
+      "price": 9.56,
+      "market_value": 59.99999999999999,
+      "pl": -7.105427357601002e-15,
+      "pl_pct": -1.1842378929335004e-14
+    },
+    {
+      "symbol": "BIAF",
+      "qty": 6.857142857142856,
+      "avg_cost": 8.750000000000002,
+      "cost": 60.0,
+      "price": 8.75,
+      "market_value": 59.999999999999986,
+      "pl": -1.4210854715202004e-14,
+      "pl_pct": -2.3684757858670007e-14
+    },
+    {
       "symbol": "VEEV",
       "qty": 0.22650056625141565,
       "avg_cost": 264.9,
@@ -251,86 +331,6 @@
       "market_value": 58.26069572171133,
       "pl": -1.739304278288671,
       "pl_pct": -2.8988404638144516
-    },
-    {
-      "symbol": "DAIC",
-      "qty": 9.433962264150944,
-      "avg_cost": 5.3,
-      "cost": 50.0,
-      "price": 5.3,
-      "market_value": 50.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "AEMD",
-      "qty": 7.374631268436578,
-      "avg_cost": 6.78,
-      "cost": 50.0,
-      "price": 6.78,
-      "market_value": 50.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "USDE",
-      "qty": 6.485084306095979,
-      "avg_cost": 7.71,
-      "cost": 50.0,
-      "price": 7.71,
-      "market_value": 50.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "VEEA",
-      "qty": 9.380863039399625,
-      "avg_cost": 5.33,
-      "cost": 50.0,
-      "price": 5.33,
-      "market_value": 50.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "ABSI",
-      "qty": 5.393743257820928,
-      "avg_cost": 9.27,
-      "cost": 50.0,
-      "price": 9.27,
-      "market_value": 50.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "NVAX",
-      "qty": 5.0,
-      "avg_cost": 10.0,
-      "cost": 50.0,
-      "price": 10.0,
-      "market_value": 50.0,
-      "pl": 0.0,
-      "pl_pct": 0.0
-    },
-    {
-      "symbol": "BIAF",
-      "qty": 5.7142857142857135,
-      "avg_cost": 8.750000000000002,
-      "cost": 50.0,
-      "price": 8.75,
-      "market_value": 49.99999999999999,
-      "pl": -7.105427357601002e-15,
-      "pl_pct": -1.4210854715202004e-14
-    },
-    {
-      "symbol": "PAGS",
-      "qty": 5.230125523012552,
-      "avg_cost": 9.56,
-      "cost": 50.0,
-      "price": 9.56,
-      "market_value": 49.99999999999999,
-      "pl": -7.105427357601002e-15,
-      "pl_pct": -1.4210854715202004e-14
     },
     {
       "symbol": "MEDS",
@@ -485,6 +485,106 @@
   ],
   "trades": [
     {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "PAGS",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.56,
+      "qty": 1.0460251046025104,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "NVAX",
+      "side": "buy",
+      "kind": "day",
+      "price": 10.0,
+      "qty": 1.0,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "IRD",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.28,
+      "qty": 1.8939393939393938,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "SBET",
+      "side": "buy",
+      "kind": "day",
+      "price": 8.26,
+      "qty": 1.2106537530266344,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "ABSI",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.27,
+      "qty": 1.0787486515641855,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "VEEA",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.33,
+      "qty": 1.876172607879925,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "USDE",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.71,
+      "qty": 1.297016861219196,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "BIAF",
+      "side": "buy",
+      "kind": "day",
+      "price": 8.75,
+      "qty": 1.1428571428571428,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "AEMD",
+      "side": "buy",
+      "kind": "day",
+      "price": 6.78,
+      "qty": 1.4749262536873156,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "DAIC",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.3,
+      "qty": 1.8867924528301887,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
       "time": "2026-09-18 09:52:02 JST",
       "symbol": "PAGS",
       "side": "buy",
@@ -3381,118 +3481,18 @@
       "kind": "day",
       "price": 15.6,
       "qty": 0.6410256410256411,
-      "amount": 10.0,
-      "prediction": "大きく値上がり"
-    },
-    {
-      "time": "2026-09-17 23:07:53 JST",
-      "symbol": "XHLD",
-      "side": "buy",
-      "kind": "day",
-      "price": 9.65,
-      "qty": 1.0362694300518134,
-      "amount": 10.0,
-      "prediction": "大きく値上がり"
-    },
-    {
-      "time": "2026-09-17 23:07:53 JST",
-      "symbol": "FANG",
-      "side": "buy",
-      "kind": "day",
-      "price": 194.54,
-      "qty": 0.05140331037318804,
-      "amount": 10.0,
-      "prediction": "大きく値下がり"
-    },
-    {
-      "time": "2026-09-17 23:07:53 JST",
-      "symbol": "TEVA",
-      "side": "buy",
-      "kind": "day",
-      "price": 38.53,
-      "qty": 0.2595380223202699,
-      "amount": 10.0,
-      "prediction": "大きく値上がり"
-    },
-    {
-      "time": "2026-09-17 23:07:53 JST",
-      "symbol": "FTFT",
-      "side": "buy",
-      "kind": "day",
-      "price": 7.0,
-      "qty": 1.4285714285714286,
-      "amount": 10.0,
-      "prediction": "大きく値上がり"
-    },
-    {
-      "time": "2026-09-17 23:07:53 JST",
-      "symbol": "AEHL",
-      "side": "buy",
-      "kind": "day",
-      "price": 9.22,
-      "qty": 1.0845986984815617,
-      "amount": 10.0,
-      "prediction": "大きく値上がり"
-    },
-    {
-      "time": "2026-09-17 23:07:53 JST",
-      "symbol": "BBNX",
-      "side": "buy",
-      "kind": "day",
-      "price": 22.18,
-      "qty": 0.4508566275924256,
-      "amount": 10.0,
-      "prediction": "大きく値上がり"
-    },
-    {
-      "time": "2026-09-17 23:07:53 JST",
-      "symbol": "MEDS",
-      "side": "buy",
-      "kind": "day",
-      "price": 6.07,
-      "qty": 1.6474464579901154,
-      "amount": 10.0,
-      "prediction": "大きく値上がり"
-    },
-    {
-      "time": "2026-09-17 22:08:51 JST",
-      "symbol": "PGEN",
-      "side": "buy",
-      "kind": "day",
-      "price": 7.435,
-      "qty": 1.3449899125756557,
-      "amount": 10.0,
-      "prediction": "大きく値上がり"
-    },
-    {
-      "time": "2026-09-17 22:08:51 JST",
-      "symbol": "SBET",
-      "side": "buy",
-      "kind": "day",
-      "price": 7.98,
-      "qty": 1.2531328320802004,
-      "amount": 10.0,
-      "prediction": "大きく値上がり"
-    },
-    {
-      "time": "2026-09-17 22:08:51 JST",
-      "symbol": "IRD",
-      "side": "buy",
-      "kind": "day",
-      "price": 5.41,
-      "qty": 1.8484288354898335,
       "amount": 10.0,
       "prediction": "大きく値上がり"
     }
   ],
   "summary": {
-    "total_bought": 3250.0,
-    "total_cost_basis": 3250.0,
-    "total_market_value": 2227.7295,
+    "total_bought": 3350.0,
+    "total_cost_basis": 3350.0,
+    "total_market_value": 2327.7295,
     "realized_pl": 0,
     "unrealized_pl": -1022.2705,
     "total_pl": -1022.2705,
-    "total_pl_pct": -31.45
+    "total_pl_pct": -30.52
   },
   "accuracy": {
     "all": {
@@ -3534,12 +3534,12 @@
       "cost": 110.0
     },
     "IRD": {
-      "qty": 29.802414160085142,
-      "cost": 160.0
+      "qty": 31.696353554024537,
+      "cost": 170.0
     },
     "SBET": {
-      "qty": 19.837729918015377,
-      "cost": 160.0
+      "qty": 21.04838367104201,
+      "cost": 170.0
     },
     "PGEN": {
       "qty": 14.794889038332213,
@@ -3678,36 +3678,36 @@
       "cost": 60.0
     },
     "DAIC": {
-      "qty": 9.433962264150944,
-      "cost": 50.0
+      "qty": 11.320754716981133,
+      "cost": 60.0
     },
     "AEMD": {
-      "qty": 7.374631268436578,
-      "cost": 50.0
+      "qty": 8.849557522123893,
+      "cost": 60.0
     },
     "BIAF": {
-      "qty": 5.7142857142857135,
-      "cost": 50.0
+      "qty": 6.857142857142856,
+      "cost": 60.0
     },
     "USDE": {
-      "qty": 6.485084306095979,
-      "cost": 50.0
+      "qty": 7.782101167315175,
+      "cost": 60.0
     },
     "VEEA": {
-      "qty": 9.380863039399625,
-      "cost": 50.0
+      "qty": 11.25703564727955,
+      "cost": 60.0
     },
     "ABSI": {
-      "qty": 5.393743257820928,
-      "cost": 50.0
+      "qty": 6.472491909385114,
+      "cost": 60.0
     },
     "NVAX": {
-      "qty": 5.0,
-      "cost": 50.0
+      "qty": 6.0,
+      "cost": 60.0
     },
     "PAGS": {
-      "qty": 5.230125523012552,
-      "cost": 50.0
+      "qty": 6.276150627615062,
+      "cost": 60.0
     }
   },
   "_trades_raw": [
@@ -6953,6 +6953,106 @@
     },
     {
       "time": "2026-09-18 09:52:02 JST",
+      "symbol": "PAGS",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.56,
+      "qty": 1.0460251046025104,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "DAIC",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.3,
+      "qty": 1.8867924528301887,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "AEMD",
+      "side": "buy",
+      "kind": "day",
+      "price": 6.78,
+      "qty": 1.4749262536873156,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "BIAF",
+      "side": "buy",
+      "kind": "day",
+      "price": 8.75,
+      "qty": 1.1428571428571428,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "USDE",
+      "side": "buy",
+      "kind": "day",
+      "price": 7.71,
+      "qty": 1.297016861219196,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "VEEA",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.33,
+      "qty": 1.876172607879925,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "ABSI",
+      "side": "buy",
+      "kind": "day",
+      "price": 9.27,
+      "qty": 1.0787486515641855,
+      "amount": 10.0,
+      "prediction": "少し値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "SBET",
+      "side": "buy",
+      "kind": "day",
+      "price": 8.26,
+      "qty": 1.2106537530266344,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "IRD",
+      "side": "buy",
+      "kind": "day",
+      "price": 5.28,
+      "qty": 1.8939393939393938,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
+      "symbol": "NVAX",
+      "side": "buy",
+      "kind": "day",
+      "price": 10.0,
+      "qty": 1.0,
+      "amount": 10.0,
+      "prediction": "大きく値上がり"
+    },
+    {
+      "time": "2026-09-18 10:07:52 JST",
       "symbol": "PAGS",
       "side": "buy",
       "kind": "day",
