@@ -125,6 +125,18 @@ except Exception as _rl_import_err:  # noqa: N816
     print(f"[warn] ml_learning(強化学習モジュール)を読み込めませんでした。"
           f"ルールベース予想にフォールバックします: {_rl_import_err}")
 
+# ニュース見出しの辞書ベース(自前・無料)センチメントスコアリング。
+# yfinanceのnewsが取れない/形式が変わった場合でも本体は止めず、
+# 中立(0.0)にフォールバックする。
+try:
+    import news_sentiment as ns
+    NEWS_SENTIMENT_AVAILABLE = True
+except Exception as _ns_import_err:  # noqa: N816
+    ns = None
+    NEWS_SENTIMENT_AVAILABLE = False
+    print(f"[warn] news_sentiment(ニュース感情分析モジュール)を読み込めませんでした。"
+          f"ニュース特徴量は中立値で扱います: {_ns_import_err}")
+
 
 # --------------------------------------------------------------------------
 # Configuration (tweak freely)
@@ -1207,6 +1219,9 @@ EMPTY_FUNDAMENTALS = {
     "total_cash": None,
     "total_debt": None,
     "net_cash_ratio": None,
+    "news_sentiment_score": None,
+    "news_volume_7d": None,
+    "news_sentiment_conf": None,
 }
 
 
@@ -1282,6 +1297,24 @@ def _fetch_fundamentals_uncached(symbol: str, skip_earnings_lookup: bool) -> dic
             # 「No earnings dates found, symbol may be delisted」系はここに来る。
             # 件数が多くログが埋まるため、個別の警告は出さない。
             pass
+
+    # ニュース見出しの辞書ベースセンチメント(追加のHTTPリクエストはyfinance内部で
+    # 発生するが、tkは既に生成済みなのでTickerの再生成は不要)。
+    if NEWS_SENTIMENT_AVAILABLE and tk is not None:
+        try:
+            news_result = ns.fetch_and_score_news(tk)
+            result["news_sentiment_score"] = news_result["news_sentiment_score"]
+            result["news_volume_7d"] = news_result["news_volume_7d"]
+            result["news_sentiment_conf"] = news_result["news_sentiment_conf"]
+        except Exception as e:
+            print(f"[warn] news sentiment fetch failed for {symbol}: {e}")
+            result["news_sentiment_score"] = 0.0
+            result["news_volume_7d"] = 0
+            result["news_sentiment_conf"] = 0.0
+    else:
+        result["news_sentiment_score"] = 0.0
+        result["news_volume_7d"] = 0
+        result["news_sentiment_conf"] = 0.0
 
     return result
 
@@ -3493,6 +3526,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 #$env:SIM_RESET="1"; $env:SIM_INITIAL_CASH="300"; python "c:\Users\81803\Downloads\kabuserver-main - コピー\kabuserver-main\us_stock_scanner_webull_openapi.py"
