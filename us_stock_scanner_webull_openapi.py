@@ -98,7 +98,7 @@ from email.mime.text import MIMEText
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "data")
 INDEX_JSON_PATH = os.path.join(DATA_DIR, "index.json")
 # 保持するスナップショット数の上限(リポジトリの肥大化防止。Noneで無制限)
-MAX_SNAPSHOTS_KEPT = 90
+MAX_SNAPSHOTS_KEPT = 20000
 
 import numpy as np
 import pandas as pd
