@@ -206,6 +206,24 @@
   .sim-trades .row .side.buy{background:#e6f4ea; color:var(--up);}
   .sim-trades .row .side.sell{background:#fce8e6; color:var(--down);}
   .sim-empty{color:var(--muted); font-size:13px; padding:20px 0; text-align:center;}
+  .sim-policy{
+    display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; font-size:11.5px; color:var(--muted);
+  }
+  .sim-policy span{
+    background:var(--chip-bg); border-radius:20px; padding:4px 10px;
+  }
+  .sim-learn-row{
+    display:flex; align-items:center; gap:8px; font-size:12px;
+  }
+  .sim-learn-row .tag{
+    font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:20px;
+  }
+  .sim-learn-row .tag.win{background:#e6f4ea; color:var(--up);}
+  .sim-learn-row .tag.lose{background:#fce8e6; color:var(--down);}
+  .sim-reset-code{
+    background:var(--card); border:1px solid var(--line); border-radius:8px;
+    padding:8px 10px; font-family:monospace; font-size:11.5px; margin:6px 0; overflow-x:auto;
+  }
   footer{
     max-width:760px; margin:0 auto; padding:16px 14px 50px;
     color:var(--muted); font-size:11.5px; border-top:1px solid var(--line);
@@ -287,17 +305,26 @@
   <div id="simulationPanel" style="display:none;">
     <div class="disclaimer">
       予想(値上がり/値下がり)に従って仮想的に売買するペーパートレードです。実際の資金は一切動きません。
-      買いは1回の注文につき銘柄ごと最大$10(端株)、売りは保有数量をいつでも全量売却できます。
-      端株(端数株)の売買のみ米国市場の通常取引時間中(9:30〜16:00 ET)に限ります。$10で1株以上
-      買える銘柄や、1株以上保有している銘柄は時間外でも売買されます。投資助言ではありません。
+      初期資金からスタートし、現金の範囲内でのみ新規購入します(稼いで現金を増やさない限りそれ以上は買えません)。
+      買いは1回の注文につき銘柄ごと最大$10(残り現金がそれ未満ならその範囲内)、売りは保有数量を全量売却します。
+      弱気予想が出ても1回だけなら「保持」を選び、連続で弱気予想が出るか含み損が大きくなった場合のみ売却します
+      (詳細は下の運用ルールを参照)。端株(端数株)の売買のみ米国市場の通常取引時間中(9:30〜16:00 ET)に限ります。
+      投資助言ではありません。
     </div>
+    <div id="simPolicy" class="sim-policy"></div>
     <div id="simSummary" class="sim-summary"></div>
+    <div class="analysis-title">期間損益</div>
+    <div id="simPeriod" class="sim-summary"></div>
     <div class="analysis-title">予想的中率</div>
     <div id="simAccuracy" class="sim-accuracy"></div>
+    <div class="analysis-title">予想の学習状況(勝ちパターン・負けパターン)</div>
+    <div id="simLearning" class="sim-accuracy"></div>
     <div class="analysis-title">仮想保有ポジション</div>
     <div id="simPositions" class="sim-positions"></div>
     <div class="analysis-title">取引履歴(直近)</div>
     <div id="simTrades" class="sim-trades"></div>
+    <div class="analysis-title">シミュレーションのリセット</div>
+    <div id="simResetBox" class="disclaimer"></div>
   </div>
 </main>
 
@@ -617,6 +644,7 @@ async function attachAccuracy(elId, symbol, kind){
 // 売買の実行自体はスキャナー側(Pythonスクリプト)が定期実行のたびに行う)
 // --------------------------------------------------------------------------
 let simulationCache = null;
+let learningCache = null;
 
 async function loadSimulation(force){
   if(simulationCache && !force) return simulationCache;
@@ -629,30 +657,69 @@ async function loadSimulation(force){
   return simulationCache;
 }
 
+async function loadLearning(force){
+  if(learningCache && !force) return learningCache;
+  try{
+    const res = await fetch(`${DATA_DIR}/learning_weights.json`, {cache:"no-store"});
+    if(!res.ok){ learningCache = null; return null; }
+    const text = await res.text();
+    learningCache = text.trim() ? parseJsonLoose(text) : null;
+  }catch(e){ learningCache = null; }
+  return learningCache;
+}
+
 const ACCURACY_WINDOW_LABELS = {all:"全期間", d1:"1日後", d5:"5日後", d30:"30日後"};
+const PERIOD_LABELS = {d1:"1日の収支", d7:"1週間の収支", d30:"1か月の収支"};
 
 function renderSimulation(){
+  const policyEl = document.getElementById("simPolicy");
   const summaryEl = document.getElementById("simSummary");
+  const periodEl = document.getElementById("simPeriod");
   const accEl = document.getElementById("simAccuracy");
+  const learnEl = document.getElementById("simLearning");
   const posEl = document.getElementById("simPositions");
   const tradesEl = document.getElementById("simTrades");
+  const resetEl = document.getElementById("simResetBox");
 
   loadSimulation().then(sim => {
     if(!sim){
       summaryEl.innerHTML = `<div class="sim-empty">まだシミュレーションデータがありません。次回のスキャン実行後に表示されます。</div>`;
-      accEl.innerHTML = ""; posEl.innerHTML = ""; tradesEl.innerHTML = "";
+      policyEl.innerHTML = ""; periodEl.innerHTML = ""; accEl.innerHTML = "";
+      learnEl.innerHTML = ""; posEl.innerHTML = ""; tradesEl.innerHTML = "";
+      renderResetBox(resetEl, null);
       return;
     }
     const s = sim.summary || {};
-    const plClass = (s.total_pl||0) > 0 ? "pos" : (s.total_pl||0) < 0 ? "neg" : "";
+    const pol = sim.policy || {};
+    const plClass = (s.equity_pl!=null ? s.equity_pl : s.total_pl||0) > 0 ? "pos"
+      : (s.equity_pl!=null ? s.equity_pl : s.total_pl||0) < 0 ? "neg" : "";
+
+    policyEl.innerHTML = `
+      <span>初期資金 ${fmtUsd(s.initial_cash)}</span>
+      <span>1回の買付上限 ${fmtUsd(pol.buy_per_order_usd)}</span>
+      <span>弱気${pol.bearish_streak_to_sell || "—"}回連続で売却(単発は保持)</span>
+      <span>含み損${pol.stop_loss_pct!=null ? pol.stop_loss_pct+"%" : "—"}で強制損切り</span>
+    `;
+
     summaryEl.innerHTML = `
+      <div class="box"><div class="lbl">現金残高</div><div class="val">${fmtUsd(s.cash)}</div></div>
       <div class="box"><div class="lbl">評価額</div><div class="val">${fmtUsd(s.total_market_value)}</div></div>
-      <div class="box"><div class="lbl">投資累計額</div><div class="val">${fmtUsd(s.total_bought)}</div></div>
-      <div class="box"><div class="lbl">損益 ($)</div><div class="val ${plClass}">${(s.total_pl>0?"+":"")}${fmtUsd(s.total_pl)}</div></div>
-      <div class="box"><div class="lbl">損益 (%)</div><div class="val ${plClass}">${fmtPct(s.total_pl_pct)}</div></div>
+      <div class="box"><div class="lbl">総資産(現金+評価額)</div><div class="val">${fmtUsd(s.total_equity)}</div></div>
+      <div class="box"><div class="lbl">損益 ($)</div><div class="val ${plClass}">${(s.equity_pl>0?"+":"")}${fmtUsd(s.equity_pl)}</div></div>
+      <div class="box"><div class="lbl">損益 (%)</div><div class="val ${plClass}">${fmtPct(s.equity_pl_pct)}</div></div>
       <div class="box"><div class="lbl">確定損益</div><div class="val">${fmtUsd(s.realized_pl)}</div></div>
       <div class="box"><div class="lbl">含み損益</div><div class="val">${fmtUsd(s.unrealized_pl)}</div></div>
     `;
+
+    const per = sim.period_pl || {};
+    periodEl.innerHTML = ["d1","d7","d30"].map(k => {
+      const p = per[k] || {};
+      const cls = (p.pl||0) > 0 ? "pos" : (p.pl||0) < 0 ? "neg" : "";
+      const body = p.pl!=null
+        ? `<div class="val ${cls}">${(p.pl>0?"+":"")}${fmtUsd(p.pl)} (${fmtPct(p.pl_pct)})</div>`
+        : `<div class="val" style="font-size:13px;color:var(--muted);">データ収集中</div>`;
+      return `<div class="box"><div class="lbl">${PERIOD_LABELS[k]}</div>${body}</div>`;
+    }).join("");
 
     const acc = sim.accuracy || {};
     accEl.innerHTML = ["all","d1","d5","d30"].map(k => {
@@ -667,6 +734,8 @@ function renderSimulation(){
     const positions = sim.positions || [];
     posEl.innerHTML = positions.length ? positions.map(p => {
       const pc = (p.pl||0) > 0 ? "pos" : (p.pl||0) < 0 ? "neg" : "";
+      const streakNote = p.bear_streak > 0
+        ? ` <span style="color:var(--down);font-size:11px;">弱気${p.bear_streak}/${p.sell_streak_threshold}回連続中(保持中)</span>` : "";
       return `<div class="row">
         <span class="sym">${p.symbol}</span>
         <span>数量 ${fmtNum(p.qty,4)}</span>
@@ -674,6 +743,7 @@ function renderSimulation(){
         <span>現在値 ${fmtUsd(p.price)}</span>
         <span>評価額 ${fmtUsd(p.market_value)}</span>
         <span class="${pc}" style="font-weight:700;">${p.pl>0?"+":""}${fmtUsd(p.pl)} (${fmtPct(p.pl_pct)})</span>
+        ${streakNote}
       </div>`;
     }).join("") : `<div class="sim-empty">現在、仮想保有ポジションはありません。</div>`;
 
@@ -687,9 +757,56 @@ function renderSimulation(){
         <span>価格 ${fmtUsd(t.price)}</span>
         <span>金額 ${fmtUsd(t.amount)}</span>
         ${t.side==="sell" && t.realized_pl!=null ? `<span style="font-weight:700;color:${t.realized_pl>=0?"var(--up)":"var(--down)"};">実現損益 ${t.realized_pl>0?"+":""}${fmtUsd(t.realized_pl)}</span>` : ""}
+        ${t.sell_reason ? `<span style="font-size:11px;color:var(--muted);">${t.sell_reason==="stop_loss"?"損切り":"弱気連続"}</span>` : ""}
       </div>
     `).join("") : `<div class="sim-empty">まだ取引履歴がありません。</div>`;
+
+    renderResetBox(resetEl, s.initial_cash);
   });
+
+  loadLearning().then(learn => {
+    if(!learn || !learn.patterns || !Object.keys(learn.patterns).length){
+      learnEl.innerHTML = `<div class="sim-empty">まだ学習データがありません(判定に十分な件数が集まると表示されます)。</div>`;
+      return;
+    }
+    const rows = Object.entries(learn.patterns)
+      .filter(([,v]) => v.total >= 8)
+      .sort((a,b) => (b[1].rate||0) - (a[1].rate||0));
+    if(!rows.length){
+      learnEl.innerHTML = `<div class="sim-empty">まだ学習に十分なサンプル数のパターンがありません。</div>`;
+      return;
+    }
+    const top = rows.slice(0,5), bottom = rows.slice(-5).reverse();
+    const rowHtml = ([key, v], tag) => `
+      <div class="sim-learn-row row">
+        <span class="tag ${tag}">${tag==="win"?"勝ちパターン":"負けパターン"}</span>
+        <span style="font-family:monospace;font-size:11px;">${key}</span>
+        <span>的中率 ${v.rate!=null ? v.rate.toFixed(1)+"%" : "—"} (${v.hits}/${v.total}件)</span>
+      </div>`;
+    learnEl.innerHTML = `
+      <div style="width:100%;">
+        ${top.map(r => rowHtml(r,"win")).join("")}
+        ${bottom.map(r => rowHtml(r,"lose")).join("")}
+      </div>
+      <div class="sim-empty" style="padding:8px 0 0;">的中率の低いパターンは予想を弱め、高いパターンは予想を強める形で、次回以降の予想に自動的に反映されます。</div>
+    `;
+  });
+}
+
+function renderResetBox(el, currentInitialCash){
+  if(!el) return;
+  const amt = currentInitialCash!=null ? currentInitialCash : 100;
+  el.innerHTML = `
+    シミュレーションをリセットして最初からやり直すには、スキャナー実行時に環境変数
+    <code>SIM_RESET=1</code> を付けて1回だけ実行してください(実行後は必ず外してください。
+    付けたままだと毎回リセットされてしまいます)。初期資金を変えたい場合は
+    <code>SIM_INITIAL_CASH</code> も一緒に指定します(例: $300でリセット)。
+    <div class="sim-reset-code">$env:SIM_RESET = "1" $env:SIM_INITIAL_CASH = "300" python "c:\\Users\\81803\\Downloads\\kabuserver-main - コピー\\kabuserver-main\\us_stock_scanner_webull_openapi.py"</div>
+    現在の初期資金設定: <strong>${fmtUsd(amt)}</strong>
+    ${currentInitialCash==null ? "" : ""}
+    ・学習データ(的中率の学習)は通常リセットの対象外です。学習データも消したい場合は
+    <code>SIM_RESET_LEARNING=1</code> も一緒に付けてください。
+  `;
 }
 
 let currentTab = "day_trade";
