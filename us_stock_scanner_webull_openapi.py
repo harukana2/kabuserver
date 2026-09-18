@@ -2519,6 +2519,9 @@ RL_MODEL_PATH = os.path.join(DATA_DIR, "rl_model.pkl")
 RL_STATUS_PATH = os.path.join(DATA_DIR, "rl_status.json")
 SIM_RL_EPSILON = float(os.environ.get("SIM_RL_EPSILON", "0.15") or 0.15)  # 探索確率(0〜1)
 SIM_RL_MIN_SAMPLES = int(os.environ.get("SIM_RL_MIN_SAMPLES", "20") or 20)  # 行動ごとにこの件数未満は未学習扱い
+# 直近データを重視するための半減期(日)。過去のデータほど学習時の重みを
+# 指数的に小さくする(市場のレジーム変化に追従させるため)。
+SIM_RL_RECENCY_HALFLIFE_DAYS = float(os.environ.get("SIM_RL_RECENCY_HALFLIFE_DAYS", "60") or 60)
 SIM_RESET_RL_REQUESTED = os.environ.get("SIM_RESET_RL", "").lower() in ("1", "true", "yes")
 _RL_RNG = random.Random(int(os.environ.get("SIM_RL_SEED", "0") or 0) or None)
 _RL_MODEL_CACHE = None  # プロセス内で1回だけロードしてキャッシュ
@@ -2888,23 +2891,34 @@ def update_ml_learning_state(run_dt: datetime) -> None:
 
         rows = rl.build_training_rows(predictions_log, sim_trades, get_hist, today_str, SIM_BUY_USD_PER_ORDER)
         model = rl.RewardModel()
-        model.fit(rows, min_samples=SIM_RL_MIN_SAMPLES)
+        model.fit(rows, min_samples=SIM_RL_MIN_SAMPLES, today_str=today_str,
+                  recency_halflife_days=SIM_RL_RECENCY_HALFLIFE_DAYS)
         rl.save_model(model, RL_MODEL_PATH)
         _RL_MODEL_CACHE = model
 
         coverage = {k: model.coverage(k) for k in ("day", "long")}
+        metrics = {k: model.metrics_for(k) for k in ("day", "long")}
         trained_actions = sum(1 for k in coverage for c, n in coverage[k].items() if n >= SIM_RL_MIN_SAMPLES)
+        validated_actions = sum(
+            1 for k in ("day", "long") for c in rl.CATEGORY_ORDER if model.is_validated_and_better(k, c)
+        )
         _atomic_write_json(RL_STATUS_PATH, {
             "updated_at": model.trained_at,
             "trained": True,
             "training_rows": len(rows),
             "min_samples": SIM_RL_MIN_SAMPLES,
+            "recency_halflife_days": SIM_RL_RECENCY_HALFLIFE_DAYS,
             "epsilon": SIM_RL_EPSILON,
             "coverage": coverage,
+            # 各行動について、ホールドアウト検証で「何も学習しないベースライン」に
+            # 勝てているか(mae_model/mae_baseline/beats_baseline)を記録。
+            # beats_baseline=trueの行動だけが実運用の活用(greedy)判断に使われる。
+            "metrics": metrics,
             "usage_this_run": dict(_RL_USAGE_COUNTS),
         })
         print(f"[info] rl_model更新: 学習サンプル{len(rows)}件 / "
               f"学習済み行動{trained_actions}/10(day5+long5) / "
+              f"検証合格(ベースライン超え)行動{validated_actions}/10 / "
               f"今回の予想内訳 model={_RL_USAGE_COUNTS.get('model',0)} "
               f"explore={_RL_USAGE_COUNTS.get('explore',0)} "
               f"rule_fallback={_RL_USAGE_COUNTS.get('rule_fallback',0)}")
