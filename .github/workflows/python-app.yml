@@ -39,6 +39,11 @@ on:
         type: boolean
         required: false
         default: false
+      sim_reset_rl:
+        description: "強化学習モデル(rl_model.pkl)もリセットする(ゼロから学習し直す)"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write  # data/ フォルダへのコミットに必要
@@ -60,7 +65,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install --upgrade webull-openapi-python-sdk pandas numpy requests yfinance
+        run: pip install --upgrade webull-openapi-python-sdk pandas numpy requests yfinance scikit-learn
 
       - name: Run scan
         env:
@@ -76,6 +81,7 @@ jobs:
           SIM_RESET: ${{ github.event.inputs.sim_reset }}
           SIM_INITIAL_CASH: ${{ github.event.inputs.sim_initial_cash }}
           SIM_RESET_LEARNING: ${{ github.event.inputs.sim_reset_learning }}
+          SIM_RESET_RL: ${{ github.event.inputs.sim_reset_rl }}
         run: python us_stock_scanner_webull_openapi.py
 
       - name: Commit and push results
