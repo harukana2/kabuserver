@@ -1437,9 +1437,18 @@ def score_long_term(row: dict, fund: dict) -> tuple[float, float]:
 # day: 短期(目安1〜5営業日)、long: 長期(目安1〜3ヶ月)。
 
 PREDICTION_CATEGORIES = ["大きく値上がり", "少し値上がり", "変動なし", "少し値下がり", "大きく値下がり"]
+# 学習による予想の強め/弱めの補正で使う並び順(値下がり側→値上がり側)
+CATEGORY_ORDER = ["大きく値下がり", "少し値下がり", "変動なし", "少し値上がり", "大きく値上がり"]
 
 
-def predict_category(row: dict, kind: str) -> str:
+def _isnan(v):
+    return v is None or (isinstance(v, float) and np.isnan(v))
+
+
+def _signal_net(row: dict, kind: str) -> tuple[int, float, float]:
+    """テクニカル指標から「値上がり/値下がりシグナルの差(net)」を計算する。
+    predict_category と、学習用のパターン鍵生成(_pattern_signature)の両方から
+    共通して使われるロジック本体。戻り値: (net, rsi14, atr_pct)"""
     rsi14 = row.get("rsi14") or 50
     above200 = row.get("above_sma200")
     above50 = row.get("above_sma50")
@@ -1449,9 +1458,6 @@ def predict_category(row: dict, kind: str) -> str:
     atrp = row.get("atr_pct") or 0
     macd_up = row.get("macd_bullish_cross")
     macd_down = row.get("macd_bearish_cross")
-
-    def _isnan(v):
-        return v is None or (isinstance(v, float) and np.isnan(v))
 
     signals_up, signals_down = 0, 0
     if above200 is True:
@@ -1493,6 +1499,100 @@ def predict_category(row: dict, kind: str) -> str:
         if rsi14 <= 25 and net >= -1:
             net += 2
 
+    return net, rsi14, atrp
+
+
+def _rsi_zone(rsi14) -> str:
+    if _isnan(rsi14):
+        return "na"
+    if rsi14 < 35:
+        return "low"
+    if rsi14 > 65:
+        return "high"
+    return "mid"
+
+
+def _atr_zone(atrp) -> str:
+    if _isnan(atrp):
+        return "na"
+    if atrp < 2:
+        return "lo"
+    if atrp < 5:
+        return "mid"
+    return "hi"
+
+
+def _trend_zone(above50, above200) -> str:
+    a = "u" if above50 is True else ("d" if above50 is False else "n")
+    b = "u" if above200 is True else ("d" if above200 is False else "n")
+    return a + b
+
+
+def prediction_pattern_key(row: dict, kind: str) -> str:
+    """予想の「型(パターン)」を表す鍵。同じ型の予想がこれまでどれくらい
+    的中してきたかを学習・集計するために使う(predictions_log に保存し、
+    次回以降の predict_category での予想の強め/弱め補正に使う)。"""
+    net, rsi14, atrp = _signal_net(row, kind)
+    net_c = max(-4, min(4, int(round(net))))
+    tz = _trend_zone(row.get("above_sma50"), row.get("above_sma200"))
+    return f"{kind}|net{net_c}|rsi_{_rsi_zone(rsi14)}|atr_{_atr_zone(atrp)}|tr_{tz}"
+
+
+_LEARNING_CACHE: dict | None = None
+
+
+def load_learning_weights(force: bool = False) -> dict:
+    """パターン別の的中率学習データ(data/learning_weights.json)を読み込む。
+    プロセス内でキャッシュし、同一実行では1回だけディスクから読む。"""
+    global _LEARNING_CACHE
+    if _LEARNING_CACHE is not None and not force:
+        return _LEARNING_CACHE
+    data = {"patterns": {}}
+    try:
+        if os.path.exists(LEARNING_PATH) and os.path.getsize(LEARNING_PATH) > 0:
+            with open(LEARNING_PATH, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            if isinstance(loaded, dict) and isinstance(loaded.get("patterns"), dict):
+                data = loaded
+    except Exception as e:
+        print(f"[warn] learning_weights.json 読み込み失敗: {e}")
+    _LEARNING_CACHE = data
+    return data
+
+
+def _apply_learning_adjustment(category: str, kind: str, pattern_key: str, learning: dict) -> str:
+    """過去の的中率(勝ちパターン/負けパターン)に基づき、予想カテゴリを
+    1段階だけ強める/弱める。サンプル数が十分(SIM_LEARN_MIN_SAMPLES以上)
+    ある場合のみ反映し、サンプルが少ないうちは元の予想をそのまま使う。"""
+    if category == "変動なし":
+        return category
+    stats = (learning.get("patterns") or {}).get(pattern_key)
+    if not stats:
+        return category
+    total = stats.get("total") or 0
+    rate = stats.get("rate")
+    if total < SIM_LEARN_MIN_SAMPLES or rate is None:
+        return category
+    try:
+        idx = CATEGORY_ORDER.index(category)
+    except ValueError:
+        return category
+    center = CATEGORY_ORDER.index("変動なし")
+    if rate < SIM_LEARN_DEMOTE_RATE:
+        # 負けパターン: このパターンでの予想は外れが多い→「変動なし」寄りに弱める
+        new_idx = idx + (1 if idx < center else -1)
+        return CATEGORY_ORDER[new_idx]
+    if rate > SIM_LEARN_PROMOTE_RATE and abs(idx - center) == 1:
+        # 勝ちパターン: 弱めの予想(少し値上がり/値下がり)がよく当たる→強めの予想に格上げ
+        new_idx = idx + (1 if idx > center else -1)
+        return CATEGORY_ORDER[new_idx]
+    return category
+
+
+def predict_category(row: dict, kind: str) -> str:
+    net, rsi14, atrp = _signal_net(row, kind)
+    mom3 = row.get("mom_3m")
+
     # ボラティリティ・モメンタムが小さい場合は「変動なし」寄りに補正
     flat_zone = (atrp < 1.5) if kind == "day" else (_isnan(mom3) or abs(mom3) < 2)
 
@@ -1509,6 +1609,10 @@ def predict_category(row: dict, kind: str) -> str:
 
     if flat_zone and category in ("少し値上がり", "少し値下がり"):
         category = "変動なし"
+
+    # 学習: 同じ型のパターンでこれまで的中率が低ければ弱め、高ければ強める
+    pattern_key = prediction_pattern_key(row, kind)
+    category = _apply_learning_adjustment(category, kind, pattern_key, load_learning_weights())
 
     return category
 
@@ -2246,6 +2350,7 @@ def append_predictions_log(day_list, long_list, major_list, run_dt: datetime, ho
                 "horizon_end": prediction_horizon_end(run_dt, kind),
                 "category": category,
                 "price_at_prediction": price,
+                "pattern": prediction_pattern_key(r, kind),
             })
 
         for r in (day_list + major_list):
@@ -2271,19 +2376,49 @@ def append_predictions_log(day_list, long_list, major_list, run_dt: datetime, ho
 # --------------------------------------------------------------------------
 #
 # ルール:
-#   - 買い: 予想が強気(値上がり系)の銘柄を、1回の注文につき銘柄ごと最大$10ぶん
-#     (端株)購入する。同じ銘柄をすでに保有していても、強気予想が出るたびに
-#     追加で$10ぶん買い増す。
-#   - 売り: 予想が弱気(値下がり系)に転じた銘柄は、保有数量の全量をいつでも
-#     売却できる(金額上限なし)。
+#   - 資金: 初期資金 SIM_INITIAL_CASH(既定$100、リセット時に変更可能)から
+#     スタートする「現金口座」を持つ仮想シミュレーション。現金が尽きたら
+#     (=稼いで現金を増やさない限り)それ以上は新規に買えない。
+#   - 買い: 予想が強気(値上がり系)の銘柄を、1回の注文につき銘柄ごと最大$10
+#     (ただし残り現金がそれ未満の場合は残り現金の範囲内)購入する。同じ銘柄を
+#     すでに保有していても、強気予想が出るたびに追加で買い増す(現金が続く限り)。
+#     残り現金が SIM_MIN_CASH_TO_TRADE 未満になったら新規購入は行わない。
+#   - 売り: 予想が弱気(値下がり系)に転じても即座には売らず、
+#     SIM_BEARISH_STREAK_TO_SELL 回連続で弱気予想が出るまでは「保持」を選べる
+#     (=単発の弱気予想でうろたえて手放さない)。ただし含み損が
+#     SIM_STOP_LOSS_PCT を超えて悪化した場合は、連続回数に関係なく
+#     損切りとして全量売却する(セーフティネット)。
 #   - 端株(単元未満株、$10で1株未満しか買えない/保有数量が1株未満)の売買のみ、
 #     米国市場の通常取引時間中に限る。$10で1株以上買える、または1株以上保有して
 #     いる場合は時間外でも売買する。
+#   - リセット: 環境変数 SIM_RESET=1 を付けて実行すると、保有・取引履歴・
+#     現金残高をすべて破棄し、SIM_INITIAL_CASH(既定$100、省略時は前回値か$100)
+#     で仮想口座を作り直す。的中率の学習データ(learning_weights.json)は
+#     SIM_RESET_LEARNING=1 を別途指定しない限り引き継がれる。
 #   - 実際の資金は動かさない、あくまで仮想的なシミュレーション。
 
 SIM_BULLISH = {"大きく値上がり", "少し値上がり"}
 SIM_BEARISH = {"大きく値下がり", "少し値下がり"}
 SIM_BUY_USD_PER_ORDER = 10.0
+
+# 初期資金・現金運用まわりの設定(いずれも環境変数で上書き可能)
+SIM_INITIAL_CASH_DEFAULT = float(os.environ.get("SIM_INITIAL_CASH", "100") or 100)
+SIM_MIN_CASH_TO_TRADE = 1.0  # 残り現金がこれ未満なら新規購入しない
+SIM_RESET_REQUESTED = os.environ.get("SIM_RESET", "").lower() in ("1", "true", "yes")
+SIM_RESET_LEARNING_REQUESTED = os.environ.get("SIM_RESET_LEARNING", "").lower() in ("1", "true", "yes")
+
+# 「弱気予想でも保持を選べる」ためのしきい値
+SIM_BEARISH_STREAK_TO_SELL = int(os.environ.get("SIM_BEARISH_STREAK_TO_SELL", "2") or 2)
+SIM_STOP_LOSS_PCT = float(os.environ.get("SIM_STOP_LOSS_PCT", "-20") or -20)  # 含み損率(%)。これを下回ったら強制損切り
+
+# 日次の資産推移を残しておく上限(日数分。1日1エントリに集約するのでこれで十分長期間保持できる)
+MAX_EQUITY_POINTS_KEPT = 400
+
+# 予想の的中/不的中パターンを学習し、次回以降の予想に反映するための設定
+LEARNING_PATH = os.path.join(DATA_DIR, "learning_weights.json")
+SIM_LEARN_MIN_SAMPLES = int(os.environ.get("SIM_LEARN_MIN_SAMPLES", "8") or 8)   # このサンプル数未満のパターンは学習反映しない
+SIM_LEARN_DEMOTE_RATE = float(os.environ.get("SIM_LEARN_DEMOTE_RATE", "35") or 35)  # 的中率がこれ未満→予想を弱める(負けパターン学習)
+SIM_LEARN_PROMOTE_RATE = float(os.environ.get("SIM_LEARN_PROMOTE_RATE", "65") or 65)  # 的中率がこれ超→予想を強める(勝ちパターン学習)
 
 
 def is_us_regular_market_hours(run_dt: datetime) -> bool:
@@ -2326,23 +2461,66 @@ def _sim_signal(r: dict) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _sim_fresh_state(initial_cash: float) -> dict:
+    """初期資金 initial_cash で仮想口座を作り直した状態(リセット後の状態)。"""
+    return {
+        "positions": {},
+        "trades": [],
+        "cash": round(initial_cash, 4),
+        "initial_cash": round(initial_cash, 4),
+        "equity_history": [],
+    }
+
+
 def _sim_load() -> dict:
     """
-    内部の保有・取引状態(銘柄ごとの数量/簿価と、取引の生ログ)を読み込む。
-    公開用JSON(simulation.json)は表示用に整形済みのため、内部状態は
-    _positions_raw / _trades_raw フィールドから復元する。
+    内部の保有・取引状態(銘柄ごとの数量/簿価/連続弱気回数、現金残高、
+    初期資金、日次資産推移)を読み込む。公開用JSON(simulation.json)は
+    表示用に整形済みのため、内部状態は _positions_raw / _trades_raw /
+    _cash_raw / _equity_raw フィールドから復元する。
+    環境変数 SIM_RESET=1 が指定されている場合は、既存の状態を無視して
+    (SIM_INITIAL_CASHで指定、省略時は既定$100の)まっさらな口座を返す。
     """
+    if SIM_RESET_REQUESTED:
+        # リセット時の初期資金: SIM_INITIAL_CASHの指定があればそれを優先、
+        # なければ前回の初期資金(あれば)、それもなければ既定$100。
+        prev_initial = None
+        try:
+            if os.path.exists(SIMULATION_PATH) and os.path.getsize(SIMULATION_PATH) > 0:
+                with open(SIMULATION_PATH, "r", encoding="utf-8") as f:
+                    prev_raw = json.load(f)
+                prev_initial = prev_raw.get("_cash_raw", {}).get("initial_cash")
+        except Exception:
+            pass
+        initial_cash = SIM_INITIAL_CASH_DEFAULT
+        if "SIM_INITIAL_CASH" not in os.environ and prev_initial:
+            initial_cash = prev_initial
+        print(f"[info] simulation: SIM_RESET指定によりリセットします(初期資金 ${initial_cash:.2f})")
+        return _sim_fresh_state(initial_cash)
+
     try:
         if os.path.exists(SIMULATION_PATH) and os.path.getsize(SIMULATION_PATH) > 0:
             with open(SIMULATION_PATH, "r", encoding="utf-8") as f:
                 raw = json.load(f)
-            return {
+            cash_raw = raw.get("_cash_raw") or {}
+            state = {
                 "positions": raw.get("_positions_raw") or {},
                 "trades": raw.get("_trades_raw") or [],
+                "cash": cash_raw.get("cash"),
+                "initial_cash": cash_raw.get("initial_cash"),
+                "equity_history": raw.get("_equity_raw") or [],
             }
+            if state["cash"] is None or state["initial_cash"] is None:
+                # 旧バージョンのsimulation.json(現金管理が無い状態)からの移行。
+                # 既存の投資額を踏まえて、初期資金を使い切っていない体で現金を復元する。
+                initial_cash = SIM_INITIAL_CASH_DEFAULT
+                spent = sum(p.get("cost", 0.0) for p in state["positions"].values())
+                state["initial_cash"] = initial_cash
+                state["cash"] = max(0.0, initial_cash - spent)
+            return state
     except Exception as e:
         print(f"[warn] simulation.json 読み込み失敗(新規作成します): {e}")
-    return {"positions": {}, "trades": []}
+    return _sim_fresh_state(SIM_INITIAL_CASH_DEFAULT)
 
 
 def _load_history_file(sym: str) -> list[dict]:
@@ -2428,17 +2606,104 @@ def compute_prediction_accuracy(run_dt: datetime) -> dict:
     return out
 
 
+def update_learning_state(run_dt: datetime) -> dict:
+    """予想ログ(predictions_log.json)を「型(パターン)」ごとに集計し直し、
+    パターンごとの的中率(勝ちパターン/負けパターン)を data/learning_weights.json
+    に保存する。次回以降の predict_category はこの結果を読み込んで、
+    的中率の低いパターンの予想は弱め、的中率の高いパターンの予想は強める
+    (=学習して予想の精度を上げていく)。失敗してもスキャン本体は止めない。"""
+    global _LEARNING_CACHE
+    result = {"patterns": {}, "updated_at": run_dt.strftime("%Y-%m-%d %H:%M:%S JST")}
+    try:
+        if SIM_RESET_LEARNING_REQUESTED:
+            print("[info] learning_weights: SIM_RESET_LEARNING指定によりリセットします")
+            os.makedirs(DATA_DIR, exist_ok=True)
+            _atomic_write_json(LEARNING_PATH, result)
+            _LEARNING_CACHE = result
+            return result
+
+        if not (os.path.exists(PREDICTIONS_LOG_PATH) and os.path.getsize(PREDICTIONS_LOG_PATH) > 0):
+            return result
+        with open(PREDICTIONS_LOG_PATH, "r", encoding="utf-8") as f:
+            log = json.load(f)
+        entries = log.get("entries", [])
+        today_str = run_dt.strftime("%Y-%m-%d")
+        hist_cache: dict[str, list[dict]] = {}
+
+        def get_hist(sym):
+            if sym not in hist_cache:
+                hist_cache[sym] = _load_history_file(sym)
+            return hist_cache[sym]
+
+        buckets: dict[str, dict] = {}
+        for e in entries:
+            pattern = e.get("pattern")
+            sym = e.get("symbol")
+            if not pattern or not sym:
+                continue
+            res = _judge_entry_hit(e, get_hist(sym), None, today_str)
+            if res is None:
+                continue
+            b = buckets.setdefault(pattern, {"hits": 0, "total": 0})
+            b["total"] += 1
+            b["hits"] += 1 if res else 0
+
+        patterns_out = {}
+        for pattern, b in buckets.items():
+            rate = round(b["hits"] / b["total"] * 100, 1) if b["total"] else None
+            patterns_out[pattern] = {"hits": b["hits"], "total": b["total"], "rate": rate}
+
+        result["patterns"] = patterns_out
+        os.makedirs(DATA_DIR, exist_ok=True)
+        _atomic_write_json(LEARNING_PATH, result)
+        _LEARNING_CACHE = result
+
+        losing = sum(1 for p in patterns_out.values() if p["total"] >= SIM_LEARN_MIN_SAMPLES and p["rate"] < SIM_LEARN_DEMOTE_RATE)
+        winning = sum(1 for p in patterns_out.values() if p["total"] >= SIM_LEARN_MIN_SAMPLES and p["rate"] > SIM_LEARN_PROMOTE_RATE)
+        print(f"[info] learning_weights更新: {len(patterns_out)}パターン "
+              f"(負けパターン{losing}件を弱め / 勝ちパターン{winning}件を強め、次回予想に反映)")
+    except Exception as e:
+        print(f"[warn] learning_weights更新に失敗しました: {e}")
+        traceback.print_exc()
+    return result
+
+
+def _equity_ref_at_or_before(equity_history: list[dict], target_date_str: str) -> dict | None:
+    candidates = [e for e in equity_history if e.get("date") and e["date"] <= target_date_str]
+    return candidates[-1] if candidates else None
+
+
+def _period_pl(equity_history: list[dict], run_dt: datetime, total_equity: float, days: int) -> dict:
+    target_date = (run_dt - timedelta(days=days)).strftime("%Y-%m-%d")
+    ref = _equity_ref_at_or_before(equity_history, target_date)
+    if not ref or not ref.get("equity"):
+        return {"pl": None, "pl_pct": None, "ref_date": None}
+    ref_eq = ref["equity"]
+    pl = total_equity - ref_eq
+    pl_pct = (pl / ref_eq * 100) if ref_eq else None
+    return {"pl": round(pl, 4), "pl_pct": round(pl_pct, 2) if pl_pct is not None else None, "ref_date": ref.get("date")}
+
+
 def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datetime) -> None:
     """
     予想に従って仮想的に売買するシミュレーションを1ステップ進め、
-    data/simulation.json (保有ポジション・取引履歴・収支・的中率) を更新する。
-    失敗してもスキャン本体・メール送信は止めない。
+    data/simulation.json (現金残高・保有ポジション・取引履歴・収支・期間損益・
+    的中率) を更新する。失敗してもスキャン本体・メール送信は止めない。
+
+    - 現金管理: 初期資金(既定$100)から始まる現金残高を持ち、残り現金の範囲
+      でしか新規購入しない(稼いで現金を増やさない限りそれ以上は買えない)。
+    - 弱気予想への対応: 単発の弱気予想では売らず、SIM_BEARISH_STREAK_TO_SELL
+      回連続で弱気予想が出るまで「保持」を選べる。ただし含み損が
+      SIM_STOP_LOSS_PCT を超えたら連続回数に関係なく損切りする。
     """
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
         state = _sim_load()
         positions: dict = state.get("positions", {}) or {}
         trades: list = state.get("trades", []) or []
+        cash: float = float(state.get("cash", SIM_INITIAL_CASH_DEFAULT) or 0.0)
+        initial_cash: float = float(state.get("initial_cash", SIM_INITIAL_CASH_DEFAULT) or SIM_INITIAL_CASH_DEFAULT)
+        equity_history: list = state.get("equity_history", []) or []
 
         regular_hours = is_us_regular_market_hours(run_dt)
         ts = run_dt.strftime("%Y-%m-%d %H:%M:%S JST")
@@ -2457,42 +2722,76 @@ def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datet
         if not regular_hours:
             print("[info] simulation: 通常取引時間外です(1株未満になる端株取引のみスキップします)")
 
+        held_no_cash_skips = 0
         for sym, r in by_symbol.items():
             price = r.get("price")
             if not price or price <= 0:
                 continue
             action, kind = _sim_signal(r)
+            pos = positions.get(sym, {"qty": 0.0, "cost": 0.0, "bear_streak": 0})
+
             if action is None:
+                # 中立予想: 弱気連続カウントはリセット(連続弱気のときだけカウントする)
+                if pos.get("qty", 0) > 1e-9:
+                    pos["bear_streak"] = 0
+                    positions[sym] = pos
                 continue
-            pos = positions.get(sym, {"qty": 0.0, "cost": 0.0})
 
             if action == "buy":
-                qty = SIM_BUY_USD_PER_ORDER / price
-                is_fractional = qty < 1.0  # $10で1株未満しか買えない場合のみ端株扱い
+                if pos.get("qty", 0) > 1e-9:
+                    pos["bear_streak"] = 0  # 強気シグナルが戻ったので弱気カウントをリセット
+                if cash < SIM_MIN_CASH_TO_TRADE:
+                    held_no_cash_skips += 1
+                    positions[sym] = pos
+                    continue  # 現金不足: 稼いで現金を増やさない限り新規購入しない
+                order_amount = min(SIM_BUY_USD_PER_ORDER, cash)
+                qty = order_amount / price
+                is_fractional = qty < 1.0  # 端株になる場合のみ通常取引時間の制限対象
                 if is_fractional and not regular_hours:
+                    positions[sym] = pos
                     continue  # 端株の新規売買は通常取引時間中のみ
                 pos["qty"] = pos.get("qty", 0.0) + qty
-                pos["cost"] = pos.get("cost", 0.0) + SIM_BUY_USD_PER_ORDER
+                pos["cost"] = pos.get("cost", 0.0) + order_amount
+                pos["bear_streak"] = 0
+                cash -= order_amount
                 positions[sym] = pos
                 trades.append({
                     "time": ts, "symbol": sym, "side": "buy", "kind": kind,
-                    "price": price, "qty": qty, "amount": SIM_BUY_USD_PER_ORDER,
+                    "price": price, "qty": qty, "amount": order_amount,
+                    "cash_after": round(cash, 4),
                     "prediction": r.get("day_prediction") if kind == "day" else r.get("long_prediction"),
                 })
+
             elif action == "sell" and pos.get("qty", 0) > 1e-9:
-                qty = pos["qty"]
-                is_fractional = qty < 1.0  # 保有数量が1株未満(端株)の場合のみ制限対象
-                if is_fractional and not regular_hours:
-                    continue  # 端株の売却は通常取引時間中のみ(1株以上ならいつでも売却可)
+                qty_held = pos["qty"]
                 cost = pos.get("cost", 0.0)
-                proceeds = qty * price
+                mv_now = qty_held * price
+                pl_pct_now = ((mv_now - cost) / cost * 100) if cost else 0.0
+                pos["bear_streak"] = pos.get("bear_streak", 0) + 1
+                stop_loss_hit = pl_pct_now <= SIM_STOP_LOSS_PCT
+                streak_hit = pos["bear_streak"] >= SIM_BEARISH_STREAK_TO_SELL
+
+                if not (stop_loss_hit or streak_hit):
+                    # 弱気予想が出たが、連続回数がまだ閾値未満かつ含み損も限度内
+                    # →「保持」を選択して売らない(単発の弱気予想でうろたえない)
+                    positions[sym] = pos
+                    continue
+
+                is_fractional = qty_held < 1.0  # 保有数量が1株未満(端株)の場合のみ制限対象
+                if is_fractional and not regular_hours:
+                    positions[sym] = pos
+                    continue  # 端株の売却は通常取引時間中のみ(1株以上ならいつでも売却可)
+                proceeds = qty_held * price
                 trades.append({
                     "time": ts, "symbol": sym, "side": "sell", "kind": kind,
-                    "price": price, "qty": qty, "amount": proceeds,
+                    "price": price, "qty": qty_held, "amount": proceeds,
                     "realized_pl": proceeds - cost,
+                    "cash_after": round(cash + proceeds, 4),
+                    "sell_reason": "stop_loss" if stop_loss_hit else "bearish_streak",
                     "prediction": r.get("day_prediction") if kind == "day" else r.get("long_prediction"),
                 })
-                positions[sym] = {"qty": 0.0, "cost": 0.0}
+                cash += proceeds
+                positions[sym] = {"qty": 0.0, "cost": 0.0, "bear_streak": 0}
 
         # 数量0のポジションは掃除する
         positions = {s: p for s, p in positions.items() if (p.get("qty") or 0) > 1e-9}
@@ -2517,6 +2816,8 @@ def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datet
                 "cost": cost, "price": price, "market_value": mv,
                 "pl": (mv - cost) if mv is not None else None,
                 "pl_pct": ((mv - cost) / cost * 100) if (mv is not None and cost) else None,
+                "bear_streak": pos.get("bear_streak", 0),
+                "sell_streak_threshold": SIM_BEARISH_STREAK_TO_SELL,
             })
         position_rows.sort(key=lambda x: -(x.get("market_value") or 0))
 
@@ -2526,6 +2827,24 @@ def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datet
         total_pl = realized_pl_total + unrealized_pl_total
         total_pl_pct = (total_pl / total_bought * 100) if total_bought else None
 
+        total_equity = cash + total_mv
+        equity_pl = total_equity - initial_cash
+        equity_pl_pct = (equity_pl / initial_cash * 100) if initial_cash else None
+
+        # --- 日次の資産推移を更新(同じ日は最新値で上書き)し、期間損益を算出 ---
+        today_str = run_dt.strftime("%Y-%m-%d")
+        equity_history = [e for e in equity_history if e.get("date") != today_str]
+        equity_history.append({"date": today_str, "equity": round(total_equity, 4), "cash": round(cash, 4)})
+        equity_history.sort(key=lambda e: e["date"])
+        if MAX_EQUITY_POINTS_KEPT:
+            equity_history = equity_history[-MAX_EQUITY_POINTS_KEPT:]
+
+        period_pl = {
+            "d1": _period_pl(equity_history, run_dt, total_equity, 1),
+            "d7": _period_pl(equity_history, run_dt, total_equity, 7),
+            "d30": _period_pl(equity_history, run_dt, total_equity, 30),
+        }
+
         accuracy = compute_prediction_accuracy(run_dt)
 
         out = {
@@ -2534,23 +2853,39 @@ def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datet
             "positions": position_rows,
             "trades": list(reversed(trades[-300:])),  # 新しい取引が先頭
             "summary": {
+                "initial_cash": round(initial_cash, 4),
+                "cash": round(cash, 4),
                 "total_bought": round(total_bought, 4),
                 "total_cost_basis": round(total_cost, 4),
                 "total_market_value": round(total_mv, 4),
+                "total_equity": round(total_equity, 4),
                 "realized_pl": round(realized_pl_total, 4),
                 "unrealized_pl": round(unrealized_pl_total, 4),
                 "total_pl": round(total_pl, 4),
                 "total_pl_pct": round(total_pl_pct, 2) if total_pl_pct is not None else None,
+                "equity_pl": round(equity_pl, 4),
+                "equity_pl_pct": round(equity_pl_pct, 2) if equity_pl_pct is not None else None,
+            },
+            "period_pl": period_pl,
+            "policy": {
+                "bearish_streak_to_sell": SIM_BEARISH_STREAK_TO_SELL,
+                "stop_loss_pct": SIM_STOP_LOSS_PCT,
+                "buy_per_order_usd": SIM_BUY_USD_PER_ORDER,
+                "min_cash_to_trade": SIM_MIN_CASH_TO_TRADE,
             },
             "accuracy": accuracy,
         }
-        # positions/tradesはフルセットを別フィールドで保存(タブ側の再計算・追跡用)
+        # positions/trades/現金/資産推移はフルセットを別フィールドで保存(タブ側の再計算・追跡用)
         out["_positions_raw"] = positions
         out["_trades_raw"] = trades
+        out["_cash_raw"] = {"cash": round(cash, 4), "initial_cash": round(initial_cash, 4)}
+        out["_equity_raw"] = equity_history
 
         _atomic_write_json(SIMULATION_PATH, out)
-        print(f"[info] simulation更新: 保有{len(position_rows)}銘柄 / 総損益 ${total_pl:.2f}"
-              + (f" ({total_pl_pct:.1f}%)" if total_pl_pct is not None else ""))
+        print(f"[info] simulation更新: 保有{len(position_rows)}銘柄 / 現金${cash:.2f} / "
+              f"総資産${total_equity:.2f} / 総損益 ${total_pl:.2f}"
+              + (f" ({equity_pl_pct:.1f}%)" if equity_pl_pct is not None else "")
+              + (f" / 資金不足で見送り{held_no_cash_skips}件" if held_no_cash_skips else ""))
     except Exception as e:
         print(f"[warn] simulation更新に失敗しました: {e}")
         traceback.print_exc()
@@ -2913,6 +3248,9 @@ def main():
         update_intraday_prices(day_list, long_list, major_list, run_dt, holdings_list)
         append_predictions_log(day_list, long_list, major_list, run_dt, holdings_list)
 
+        # 予想パターンごとの的中率を学習データに反映(次回スキャンの predict_category に使われる)
+        update_learning_state(run_dt)
+
         # 売買シミュレーション(予想に従った仮想売買)を1ステップ進める
         run_simulation(day_list, long_list, major_list, holdings_list, run_dt)
 
@@ -2940,3 +3278,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+#$env:SIM_RESET = "1"
+#$env:SIM_INITIAL_CASH = "300"
+#python "c:\Users\81803\Downloads\kabuserver-main - コピー\kabuserver-main\us_stock_scanner_webull_openapi.py"
