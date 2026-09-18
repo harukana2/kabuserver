@@ -319,6 +319,8 @@
     <div id="simAccuracy" class="sim-accuracy"></div>
     <div class="analysis-title">予想の学習状況(勝ちパターン・負けパターン)</div>
     <div id="simLearning" class="sim-accuracy"></div>
+    <div class="analysis-title">強化学習モデルの状況</div>
+    <div id="simRl" class="sim-accuracy"></div>
     <div class="analysis-title">仮想保有ポジション</div>
     <div id="simPositions" class="sim-positions"></div>
     <div class="analysis-title">取引履歴(直近)</div>
@@ -668,6 +670,18 @@ async function loadLearning(force){
   return learningCache;
 }
 
+let rlStatusCache = null;
+async function loadRlStatus(force){
+  if(rlStatusCache && !force) return rlStatusCache;
+  try{
+    const res = await fetch(`${DATA_DIR}/rl_status.json`, {cache:"no-store"});
+    if(!res.ok){ rlStatusCache = null; return null; }
+    const text = await res.text();
+    rlStatusCache = text.trim() ? parseJsonLoose(text) : null;
+  }catch(e){ rlStatusCache = null; }
+  return rlStatusCache;
+}
+
 const ACCURACY_WINDOW_LABELS = {all:"全期間", d1:"1日後", d5:"5日後", d30:"30日後"};
 const PERIOD_LABELS = {d1:"1日の収支", d7:"1週間の収支", d30:"1か月の収支"};
 
@@ -677,6 +691,7 @@ function renderSimulation(){
   const periodEl = document.getElementById("simPeriod");
   const accEl = document.getElementById("simAccuracy");
   const learnEl = document.getElementById("simLearning");
+  const rlEl = document.getElementById("simRl");
   const posEl = document.getElementById("simPositions");
   const tradesEl = document.getElementById("simTrades");
   const resetEl = document.getElementById("simResetBox");
@@ -686,6 +701,7 @@ function renderSimulation(){
       summaryEl.innerHTML = `<div class="sim-empty">まだシミュレーションデータがありません。次回のスキャン実行後に表示されます。</div>`;
       policyEl.innerHTML = ""; periodEl.innerHTML = ""; accEl.innerHTML = "";
       learnEl.innerHTML = ""; posEl.innerHTML = ""; tradesEl.innerHTML = "";
+      if(rlEl) rlEl.innerHTML = "";
       renderResetBox(resetEl, null);
       return;
     }
@@ -783,12 +799,68 @@ function renderSimulation(){
         <span style="font-family:monospace;font-size:11px;">${key}</span>
         <span>的中率 ${v.rate!=null ? v.rate.toFixed(1)+"%" : "—"} (${v.hits}/${v.total}件)</span>
       </div>`;
+
+    // 「変動なし」と予想したのに、実際はよく上昇/下落していたパターン
+    // (=見送りで逃した銘柄のパターン)。次回以降は方向予想に昇格される。
+    const missed = Object.entries(learn.patterns)
+      .filter(([,v]) => (v.neutral_total||0) >= 8)
+      .map(([key, v]) => {
+        const upRate = v.neutral_miss_up_rate, downRate = v.neutral_miss_down_rate;
+        if(upRate!=null && upRate > 65 && (downRate||0) <= 35) return {key, v, dir:"up", rate:upRate};
+        if(downRate!=null && downRate > 65 && (upRate||0) <= 35) return {key, v, dir:"down", rate:downRate};
+        return null;
+      })
+      .filter(Boolean)
+      .sort((a,b) => b.rate - a.rate)
+      .slice(0,5);
+    const missedRowHtml = (m) => `
+      <div class="sim-learn-row row">
+        <span class="tag ${m.dir==="up"?"win":"lose"}">${m.dir==="up"?"見送り→逃した上昇":"見送り→逃した下落"}</span>
+        <span style="font-family:monospace;font-size:11px;">${m.key}</span>
+        <span>「変動なし」予想が実は${m.dir==="up"?"上昇":"下落"} ${m.rate.toFixed(1)}% (${m.v.neutral_total}件中)</span>
+      </div>`;
+    const missedHtml = missed.length ? `
+      <div style="width:100%;margin-top:10px;">
+        <div class="sim-empty" style="padding:0 0 6px;">見送り(変動なし予想)で逃していたパターン ― 次回以降は方向予想に昇格されます</div>
+        ${missed.map(missedRowHtml).join("")}
+      </div>` : "";
+
     learnEl.innerHTML = `
       <div style="width:100%;">
         ${top.map(r => rowHtml(r,"win")).join("")}
         ${bottom.map(r => rowHtml(r,"lose")).join("")}
       </div>
+      ${missedHtml}
       <div class="sim-empty" style="padding:8px 0 0;">的中率の低いパターンは予想を弱め、高いパターンは予想を強める形で、次回以降の予想に自動的に反映されます。</div>
+    `;
+  });
+
+  loadRlStatus().then(rl => {
+    if(!rlEl) return;
+    if(!rl || !rl.trained){
+      rlEl.innerHTML = `<div class="sim-empty">まだ強化学習モデルが学習されていません(scikit-learnが実行環境に無いか、データがまだ少ない可能性があります)。</div>`;
+      return;
+    }
+    const covRows = ["day","long"].map(kind => {
+      const cov = (rl.coverage && rl.coverage[kind]) || {};
+      const cells = Object.entries(cov).map(([cat,n]) => {
+        const ok = n >= (rl.min_samples||20);
+        return `<span style="margin-right:10px;${ok?"":"color:var(--muted);"}">${cat} ${n}件${ok?"":"(未学習)"}</span>`;
+      }).join("");
+      return `<div class="row"><span style="font-weight:700;">${kind==="day"?"短期(day)":"長期(long)"}</span>${cells}</div>`;
+    }).join("");
+    const usage = rl.usage_this_run || {};
+    rlEl.innerHTML = `
+      <div style="width:100%;">
+        <div class="row">
+          <span>学習サンプル数 ${rl.training_rows||0}件</span>
+          <span>探索率(ε) ${rl.epsilon!=null ? (rl.epsilon*100).toFixed(0)+"%" : "—"}</span>
+          <span>更新日時 ${rl.updated_at||"—"}</span>
+        </div>
+        <div class="sim-empty" style="padding:6px 0;">行動(カテゴリ)ごとの学習サンプル数(${rl.min_samples||20}件未満は未学習として、ルールベース予想にフォールバックします)</div>
+        ${covRows}
+        <div class="sim-empty" style="padding:6px 0 0;">今回の予想内訳: モデル判断 ${usage.model||0}件 / 探索(ランダム試し打ち) ${usage.explore||0}件 / ルールベースへのフォールバック ${usage.rule_fallback||0}件</div>
+      </div>
     `;
   });
 }
@@ -801,7 +873,7 @@ function renderResetBox(el, currentInitialCash){
     <code>SIM_RESET=1</code> を付けて1回だけ実行してください(実行後は必ず外してください。
     付けたままだと毎回リセットされてしまいます)。初期資金を変えたい場合は
     <code>SIM_INITIAL_CASH</code> も一緒に指定します(例: $300でリセット)。
-    <div class="sim-reset-code">$env:SIM_RESET = "1" $env:SIM_INITIAL_CASH = "300" python "c:\\Users\\81803\\Downloads\\kabuserver-main - コピー\\kabuserver-main\\us_stock_scanner_webull_openapi.py"</div>
+    <div class="sim-reset-code">$env:SIM_RESET="1"; $env:SIM_INITIAL_CASH="300"; python "c:\\Users\\81803\\Downloads\\kabuserver-main - コピー\\kabuserver-main\\us_stock_scanner_webull_openapi.py"</div>
     現在の初期資金設定: <strong>${fmtUsd(amt)}</strong>
     ${currentInitialCash==null ? "" : ""}
     ・学習データ(的中率の学習)は通常リセットの対象外です。学習データも消したい場合は
