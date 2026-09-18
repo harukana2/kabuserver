@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-18 23:08:51 JST",
+  "updated_at": "2026-09-19 00:07:52 JST",
   "regular_hours_last_run": true,
   "positions": [
     {
@@ -251,9 +251,9 @@
   },
   "period_pl": {
     "d1": {
-      "pl": null,
-      "pl_pct": null,
-      "ref_date": null
+      "pl": 0.0,
+      "pl_pct": 0.0,
+      "ref_date": "2026-09-18"
     },
     "d7": {
       "pl": null,
@@ -279,9 +279,9 @@
       "rate": null
     },
     "d1": {
-      "hits": 45,
-      "total": 169,
-      "rate": 26.6
+      "hits": 75,
+      "total": 262,
+      "rate": 28.6
     },
     "d5": {
       "hits": 0,
@@ -465,6 +465,11 @@
   "_equity_raw": [
     {
       "date": "2026-09-18",
+      "equity": 100.0,
+      "cash": 0.0
+    },
+    {
+      "date": "2026-09-19",
       "equity": 100.0,
       "cash": 0.0
     }
