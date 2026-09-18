@@ -2891,14 +2891,14 @@
     }
   },
   "HUBG": {
-    "fetched_at": 1789686571.12321,
+    "fetched_at": 1789730932.3305318,
     "data": {
       "target_mean": 40.75,
       "market_cap": 2041304320,
       "next_earnings": null,
       "recommendation": "buy",
       "sector": "Industrials",
-      "per": 19.183908,
+      "per": 19.074286,
       "pbr": 1.1996406,
       "total_cash": 119699000,
       "total_debt": 498759008,
@@ -14675,7 +14675,7 @@
     }
   },
   "EWTX": {
-    "fetched_at": 1789686571.124199,
+    "fetched_at": 1789730932.331375,
     "data": {
       "target_mean": 51.69231,
       "market_cap": 5097877504,
@@ -14690,7 +14690,7 @@
     }
   },
   "NEOG": {
-    "fetched_at": 1789686571.1256,
+    "fetched_at": 1789730932.331926,
     "data": {
       "target_mean": 13.33333,
       "market_cap": 2798299904,
@@ -14705,7 +14705,7 @@
     }
   },
   "OMDA": {
-    "fetched_at": 1789686571.1226604,
+    "fetched_at": 1789730932.3298528,
     "data": {
       "target_mean": 28.41667,
       "market_cap": 1213927296,
@@ -14720,7 +14720,7 @@
     }
   },
   "BGC": {
-    "fetched_at": 1789686571.1225245,
+    "fetched_at": 1789730932.3297343,
     "data": {
       "target_mean": 15.5,
       "market_cap": 5700843520,
@@ -14735,7 +14735,7 @@
     }
   },
   "CORZ": {
-    "fetched_at": 1789686571.1240003,
+    "fetched_at": 1789730932.3312356,
     "data": {
       "target_mean": 36.41176,
       "market_cap": 5507774976,
