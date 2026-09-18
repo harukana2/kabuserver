@@ -2288,9 +2288,9 @@ def _atomic_write_json(path: str, obj) -> None:
     # Pythonの既定では NaN がそのまま出力されるが、これは不正なJSONで
     # ブラウザ側の JSON.parse が失敗する。失敗した場合は再帰的に除去して書き直す。
     try:
-        payload = json.dumps(obj, ensure_ascii=False, indent=2, allow_nan=False)
+        payload = json.dumps(obj, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     except ValueError:
-        payload = json.dumps(_json_safe(obj), ensure_ascii=False, indent=2, allow_nan=False)
+        payload = json.dumps(_json_safe(obj), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     with open(tmp_path, "w", encoding="utf-8") as f:
         f.write(payload)
     os.replace(tmp_path, path)  # 同一ファイルシステム内でのrenameはアトミック
