@@ -83,6 +83,7 @@ import sys
 import math
 import time
 import json
+import random
 import smtplib
 import traceback
 from datetime import datetime, timedelta, timezone
@@ -111,6 +112,18 @@ from webull.data.data_client import DataClient
 from webull.data.common.category import Category
 from webull.data.common.timespan import Timespan
 from webull.trade.trade_client import TradeClient
+
+# 強化学習(文脈的バンディット)による予想モデル。scikit-learn が入っていない
+# 環境でも本体スクリプトが止まらないよう、失敗しても従来のルールベース予想に
+# フォールバックする。
+try:
+    import ml_learning as rl
+    RL_AVAILABLE = rl.SKLEARN_AVAILABLE
+except Exception as _rl_import_err:  # noqa: N816
+    rl = None
+    RL_AVAILABLE = False
+    print(f"[warn] ml_learning(強化学習モジュール)を読み込めませんでした。"
+          f"ルールベース予想にフォールバックします: {_rl_import_err}")
 
 
 # --------------------------------------------------------------------------
@@ -1563,12 +1576,38 @@ def load_learning_weights(force: bool = False) -> dict:
 def _apply_learning_adjustment(category: str, kind: str, pattern_key: str, learning: dict) -> str:
     """過去の的中率(勝ちパターン/負けパターン)に基づき、予想カテゴリを
     1段階だけ強める/弱める。サンプル数が十分(SIM_LEARN_MIN_SAMPLES以上)
-    ある場合のみ反映し、サンプルが少ないうちは元の予想をそのまま使う。"""
-    if category == "変動なし":
-        return category
+    ある場合のみ反映し、サンプルが少ないうちは元の予想をそのまま使う。
+
+    「変動なし」と予想したケースについては、単純に的中率だけを見ると
+    (常に「変動なし」という予想が外れた=不的中、としかカウントされず)
+    どちら方向に外れたのかが分からない。そこで別途「変動なし」と予想した
+    ときの実際の値動き分布(neutral_miss_up / neutral_miss_down)を見て、
+    その型のパターンが実際にはよく上昇/下落していたなら、見送り続けずに
+    方向予想へ「昇格」させる(=逃した上昇/下落銘柄のパターンを学習する)。
+    """
     stats = (learning.get("patterns") or {}).get(pattern_key)
     if not stats:
         return category
+
+    if category == "変動なし":
+        neutral_total = stats.get("neutral_total") or 0
+        if neutral_total < SIM_LEARN_MIN_SAMPLES:
+            return category
+        outcome = stats.get("outcome") or {}
+        up_rate = stats.get("neutral_miss_up_rate")
+        down_rate = stats.get("neutral_miss_down_rate")
+        # どちらの方向にも十分ズレているというデータが取れている場合は、
+        # 見送りが優勢な(=判断がつかない)ケースとして「変動なし」のままにする
+        if up_rate is not None and up_rate > SIM_LEARN_PROMOTE_RATE and (down_rate or 0) <= SIM_LEARN_DEMOTE_RATE:
+            big = outcome.get("大きく値上がり", 0)
+            small = outcome.get("少し値上がり", 0)
+            return "大きく値上がり" if big >= small else "少し値上がり"
+        if down_rate is not None and down_rate > SIM_LEARN_PROMOTE_RATE and (up_rate or 0) <= SIM_LEARN_DEMOTE_RATE:
+            big = outcome.get("大きく値下がり", 0)
+            small = outcome.get("少し値下がり", 0)
+            return "大きく値下がり" if big >= small else "少し値下がり"
+        return category
+
     total = stats.get("total") or 0
     rate = stats.get("rate")
     if total < SIM_LEARN_MIN_SAMPLES or rate is None:
@@ -1587,6 +1626,9 @@ def _apply_learning_adjustment(category: str, kind: str, pattern_key: str, learn
         new_idx = idx + (1 if idx > center else -1)
         return CATEGORY_ORDER[new_idx]
     return category
+
+
+_RL_USAGE_COUNTS = {"model": 0, "explore": 0, "rule_fallback": 0}
 
 
 def predict_category(row: dict, kind: str) -> str:
@@ -1610,11 +1652,27 @@ def predict_category(row: dict, kind: str) -> str:
     if flat_zone and category in ("少し値上がり", "少し値下がり"):
         category = "変動なし"
 
-    # 学習: 同じ型のパターンでこれまで的中率が低ければ弱め、高ければ強める
+    # 旧来のルールベース学習: 同じ型のパターンでこれまで的中率が低ければ弱め、
+    # 高ければ強める(強化学習モデルが未成熟な間のフォールバック/事前分布として使う)
     pattern_key = prediction_pattern_key(row, kind)
-    category = _apply_learning_adjustment(category, kind, pattern_key, load_learning_weights())
+    rule_category = _apply_learning_adjustment(category, kind, pattern_key, load_learning_weights())
 
-    return category
+    # 強化学習(文脈的バンディット): 特徴量から行動(カテゴリ)ごとの期待損益を
+    # 予測し、最も期待値の高い行動を選ぶ(ε-greedyで一部は探索)。
+    # 学習済みモデルが無い/データ不足の行動については rule_category にフォールバックする。
+    rl_model = _get_rl_model()
+    if rl_model is not None:
+        feats = rl.featurize(row)
+        category_final, meta = rl.choose_action(
+            rl_model, kind, feats, rule_category,
+            epsilon=SIM_RL_EPSILON, min_samples=SIM_RL_MIN_SAMPLES, rng=_RL_RNG,
+        )
+        _RL_USAGE_COUNTS[meta["source"]] = _RL_USAGE_COUNTS.get(meta["source"], 0) + 1
+        return category_final
+
+    _RL_USAGE_COUNTS["rule_fallback"] += 1
+    return rule_category
+
 
 
 def prediction_horizon_end(run_dt: datetime, kind: str) -> str:
@@ -2351,6 +2409,7 @@ def append_predictions_log(day_list, long_list, major_list, run_dt: datetime, ho
                 "category": category,
                 "price_at_prediction": price,
                 "pattern": prediction_pattern_key(r, kind),
+                "features": rl.featurize(r) if RL_AVAILABLE else None,
             })
 
         for r in (day_list + major_list):
@@ -2419,6 +2478,28 @@ LEARNING_PATH = os.path.join(DATA_DIR, "learning_weights.json")
 SIM_LEARN_MIN_SAMPLES = int(os.environ.get("SIM_LEARN_MIN_SAMPLES", "8") or 8)   # このサンプル数未満のパターンは学習反映しない
 SIM_LEARN_DEMOTE_RATE = float(os.environ.get("SIM_LEARN_DEMOTE_RATE", "35") or 35)  # 的中率がこれ未満→予想を弱める(負けパターン学習)
 SIM_LEARN_PROMOTE_RATE = float(os.environ.get("SIM_LEARN_PROMOTE_RATE", "65") or 65)  # 的中率がこれ超→予想を強める(勝ちパターン学習)
+
+# --------------------------------------------------------------------------
+# 強化学習(文脈的バンディット)まわりの設定
+# --------------------------------------------------------------------------
+RL_MODEL_PATH = os.path.join(DATA_DIR, "rl_model.pkl")
+RL_STATUS_PATH = os.path.join(DATA_DIR, "rl_status.json")
+SIM_RL_EPSILON = float(os.environ.get("SIM_RL_EPSILON", "0.15") or 0.15)  # 探索確率(0〜1)
+SIM_RL_MIN_SAMPLES = int(os.environ.get("SIM_RL_MIN_SAMPLES", "20") or 20)  # 行動ごとにこの件数未満は未学習扱い
+SIM_RESET_RL_REQUESTED = os.environ.get("SIM_RESET_RL", "").lower() in ("1", "true", "yes")
+_RL_RNG = random.Random(int(os.environ.get("SIM_RL_SEED", "0") or 0) or None)
+_RL_MODEL_CACHE = None  # プロセス内で1回だけロードしてキャッシュ
+
+
+def _get_rl_model():
+    """学習済みの強化学習モデル(RewardModel)をロードする(プロセス内キャッシュ)。"""
+    global _RL_MODEL_CACHE
+    if not RL_AVAILABLE:
+        return None
+    if _RL_MODEL_CACHE is not None:
+        return _RL_MODEL_CACHE
+    _RL_MODEL_CACHE = rl.load_model(RL_MODEL_PATH)
+    return _RL_MODEL_CACHE
 
 
 def is_us_regular_market_hours(run_dt: datetime) -> bool:
@@ -2569,6 +2650,38 @@ def _judge_entry_hit(entry: dict, hist: list[dict], day_offset: int | None, toda
     return max(abs((c - p0) / p0 * 100) for c in closes) < 3
 
 
+def _actual_outcome_category(entry: dict, hist: list[dict], today_str: str) -> str | None:
+    """予想エントリについて、予想カテゴリに関係なく「実際にはどれくらい動いたか」
+    を5段階(大きく値上がり/少し値上がり/変動なし/少し値下がり/大きく値下がり)で
+    分類する。学習で「変動なし」と予想して逃した上昇/下落パターンを検出するために
+    使う。判定期間がまだ終わっていない・データがない場合は None。"""
+    p0 = entry.get("price_at_prediction")
+    made = entry.get("made_date")
+    end_str = entry.get("horizon_end")
+    kind = entry.get("kind")
+    if p0 is None or not hist or not made or not end_str or end_str > today_str:
+        return None
+    pts = [h for h in hist if h.get("date") and made <= h["date"] <= end_str and h.get("close") is not None]
+    if not pts:
+        return None
+    pts_sorted = sorted(pts, key=lambda h: h["date"])
+    p_end = pts_sorted[-1]["close"]
+    if not p0:
+        return None
+    chg_pct = (p_end - p0) / p0 * 100
+    big = 6.0 if kind == "day" else 15.0
+    small = 1.5 if kind == "day" else 4.0
+    if chg_pct >= big:
+        return "大きく値上がり"
+    if chg_pct >= small:
+        return "少し値上がり"
+    if chg_pct <= -big:
+        return "大きく値下がり"
+    if chg_pct <= -small:
+        return "少し値下がり"
+    return "変動なし"
+
+
 def compute_prediction_accuracy(run_dt: datetime) -> dict:
     """予想ログ(predictions_log.json)の的中率を、全期間・1日後・5日後・30日後の
     それぞれの時間軸で集計する。シミュレーションタブの「予想的中率」表示に使う。"""
@@ -2635,37 +2748,136 @@ def update_learning_state(run_dt: datetime) -> dict:
                 hist_cache[sym] = _load_history_file(sym)
             return hist_cache[sym]
 
+        outcome_keys = ["大きく値上がり", "少し値上がり", "変動なし", "少し値下がり", "大きく値下がり"]
         buckets: dict[str, dict] = {}
         for e in entries:
             pattern = e.get("pattern")
             sym = e.get("symbol")
             if not pattern or not sym:
                 continue
-            res = _judge_entry_hit(e, get_hist(sym), None, today_str)
-            if res is None:
+            hist = get_hist(sym)
+            res = _judge_entry_hit(e, hist, None, today_str)
+            actual = _actual_outcome_category(e, hist, today_str)
+            if res is None and actual is None:
                 continue
-            b = buckets.setdefault(pattern, {"hits": 0, "total": 0})
-            b["total"] += 1
-            b["hits"] += 1 if res else 0
+            b = buckets.setdefault(pattern, {
+                "hits": 0, "total": 0,
+                "outcome": {k: 0 for k in outcome_keys},
+                "neutral_total": 0, "neutral_miss_up": 0, "neutral_miss_down": 0,
+            })
+            if res is not None:
+                b["total"] += 1
+                b["hits"] += 1 if res else 0
+            if actual is not None:
+                b["outcome"][actual] = b["outcome"].get(actual, 0) + 1
+                # 「変動なし」と予想していたのに、実際は上昇/下落していた
+                # ケースだけを別集計する(=見送りで逃した上昇/下落パターン)
+                if e.get("category") == "変動なし":
+                    b["neutral_total"] += 1
+                    if "値上がり" in actual:
+                        b["neutral_miss_up"] += 1
+                    elif "値下がり" in actual:
+                        b["neutral_miss_down"] += 1
 
         patterns_out = {}
         for pattern, b in buckets.items():
             rate = round(b["hits"] / b["total"] * 100, 1) if b["total"] else None
-            patterns_out[pattern] = {"hits": b["hits"], "total": b["total"], "rate": rate}
+            neutral_total = b["neutral_total"]
+            neutral_miss_up_rate = round(b["neutral_miss_up"] / neutral_total * 100, 1) if neutral_total else None
+            neutral_miss_down_rate = round(b["neutral_miss_down"] / neutral_total * 100, 1) if neutral_total else None
+            patterns_out[pattern] = {
+                "hits": b["hits"], "total": b["total"], "rate": rate,
+                "outcome": b["outcome"],
+                "neutral_total": neutral_total,
+                "neutral_miss_up": b["neutral_miss_up"],
+                "neutral_miss_down": b["neutral_miss_down"],
+                "neutral_miss_up_rate": neutral_miss_up_rate,
+                "neutral_miss_down_rate": neutral_miss_down_rate,
+            }
 
         result["patterns"] = patterns_out
         os.makedirs(DATA_DIR, exist_ok=True)
         _atomic_write_json(LEARNING_PATH, result)
         _LEARNING_CACHE = result
 
-        losing = sum(1 for p in patterns_out.values() if p["total"] >= SIM_LEARN_MIN_SAMPLES and p["rate"] < SIM_LEARN_DEMOTE_RATE)
-        winning = sum(1 for p in patterns_out.values() if p["total"] >= SIM_LEARN_MIN_SAMPLES and p["rate"] > SIM_LEARN_PROMOTE_RATE)
+        losing = sum(1 for p in patterns_out.values() if p["total"] >= SIM_LEARN_MIN_SAMPLES and (p["rate"] or 0) < SIM_LEARN_DEMOTE_RATE)
+        winning = sum(1 for p in patterns_out.values() if p["total"] >= SIM_LEARN_MIN_SAMPLES and (p["rate"] or 0) > SIM_LEARN_PROMOTE_RATE)
+        missed_up = sum(1 for p in patterns_out.values() if p["neutral_total"] >= SIM_LEARN_MIN_SAMPLES and (p["neutral_miss_up_rate"] or 0) > SIM_LEARN_PROMOTE_RATE)
+        missed_down = sum(1 for p in patterns_out.values() if p["neutral_total"] >= SIM_LEARN_MIN_SAMPLES and (p["neutral_miss_down_rate"] or 0) > SIM_LEARN_PROMOTE_RATE)
         print(f"[info] learning_weights更新: {len(patterns_out)}パターン "
-              f"(負けパターン{losing}件を弱め / 勝ちパターン{winning}件を強め、次回予想に反映)")
+              f"(負けパターン{losing}件を弱め / 勝ちパターン{winning}件を強め / "
+              f"見送りで逃した上昇パターン{missed_up}件・下落パターン{missed_down}件を方向予想に昇格、次回予想に反映)")
     except Exception as e:
         print(f"[warn] learning_weights更新に失敗しました: {e}")
         traceback.print_exc()
     return result
+
+
+def update_ml_learning_state(run_dt: datetime) -> None:
+    """強化学習(文脈的バンディット)モデルを再学習して data/rl_model.pkl に保存する。
+    predictions_log.json(特徴量つきの予想ログ)と simulation.json(実際の売買履歴)
+    から (特徴量, 行動=予想カテゴリ, 報酬=$損益) の学習データを作り、行動ごとに
+    RandomForestRegressorで期待報酬を回帰する。scikit-learnが無い環境や
+    データがまだ少ない場合は失敗してもスキャン本体は止めない。"""
+    global _RL_MODEL_CACHE
+    if not RL_AVAILABLE:
+        return
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+
+        if SIM_RESET_RL_REQUESTED:
+            print("[info] rl_model: SIM_RESET_RL指定によりリセットします")
+            if os.path.exists(RL_MODEL_PATH):
+                os.remove(RL_MODEL_PATH)
+            _RL_MODEL_CACHE = None
+            _atomic_write_json(RL_STATUS_PATH, {"updated_at": run_dt.strftime("%Y-%m-%d %H:%M:%S JST"),
+                                                 "trained": False, "coverage": {}})
+            return
+
+        if not (os.path.exists(PREDICTIONS_LOG_PATH) and os.path.getsize(PREDICTIONS_LOG_PATH) > 0):
+            return
+        with open(PREDICTIONS_LOG_PATH, "r", encoding="utf-8") as f:
+            predictions_log = json.load(f)
+
+        sim_trades = []
+        if os.path.exists(SIMULATION_PATH) and os.path.getsize(SIMULATION_PATH) > 0:
+            with open(SIMULATION_PATH, "r", encoding="utf-8") as f:
+                sim_raw = json.load(f)
+            sim_trades = sim_raw.get("_trades_raw") or []
+
+        today_str = run_dt.strftime("%Y-%m-%d")
+        hist_cache: dict[str, list[dict]] = {}
+
+        def get_hist(sym):
+            if sym not in hist_cache:
+                hist_cache[sym] = _load_history_file(sym)
+            return hist_cache[sym]
+
+        rows = rl.build_training_rows(predictions_log, sim_trades, get_hist, today_str, SIM_BUY_USD_PER_ORDER)
+        model = rl.RewardModel()
+        model.fit(rows, min_samples=SIM_RL_MIN_SAMPLES)
+        rl.save_model(model, RL_MODEL_PATH)
+        _RL_MODEL_CACHE = model
+
+        coverage = {k: model.coverage(k) for k in ("day", "long")}
+        trained_actions = sum(1 for k in coverage for c, n in coverage[k].items() if n >= SIM_RL_MIN_SAMPLES)
+        _atomic_write_json(RL_STATUS_PATH, {
+            "updated_at": model.trained_at,
+            "trained": True,
+            "training_rows": len(rows),
+            "min_samples": SIM_RL_MIN_SAMPLES,
+            "epsilon": SIM_RL_EPSILON,
+            "coverage": coverage,
+            "usage_this_run": dict(_RL_USAGE_COUNTS),
+        })
+        print(f"[info] rl_model更新: 学習サンプル{len(rows)}件 / "
+              f"学習済み行動{trained_actions}/10(day5+long5) / "
+              f"今回の予想内訳 model={_RL_USAGE_COUNTS.get('model',0)} "
+              f"explore={_RL_USAGE_COUNTS.get('explore',0)} "
+              f"rule_fallback={_RL_USAGE_COUNTS.get('rule_fallback',0)}")
+    except Exception as e:
+        print(f"[warn] rl_model更新に失敗しました: {e}")
+        traceback.print_exc()
 
 
 def _equity_ref_at_or_before(equity_history: list[dict], target_date_str: str) -> dict | None:
@@ -3254,6 +3466,9 @@ def main():
         # 売買シミュレーション(予想に従った仮想売買)を1ステップ進める
         run_simulation(day_list, long_list, major_list, holdings_list, run_dt)
 
+        # 強化学習モデルの再学習(実際の売買損益を報酬として、次回予想の精度向上に反映)
+        update_ml_learning_state(run_dt)
+
         save_fundamentals_cache()
 
         sent = False
@@ -3278,6 +3493,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-#$env:SIM_RESET = "1"
-#$env:SIM_INITIAL_CASH = "300"
-#python "c:\Users\81803\Downloads\kabuserver-main - コピー\kabuserver-main\us_stock_scanner_webull_openapi.py"
+
+
+#$env:SIM_RESET="1"; $env:SIM_INITIAL_CASH="300"; python "c:\Users\81803\Downloads\kabuserver-main - コピー\kabuserver-main\us_stock_scanner_webull_openapi.py"
