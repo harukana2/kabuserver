@@ -148,6 +148,49 @@
     display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--muted); margin:6px 2px 0;
   }
   .legend i{display:inline-block; width:18px; height:0; border-top:2px solid; margin-right:5px; vertical-align:middle;}
+  /* 銘柄名クリック(分析へ) */
+  .sym-link{cursor:pointer;}
+  .sym-link:hover{text-decoration:underline;}
+  /* ピン止め・マーカー */
+  .pin-row{
+    display:flex; align-items:center; gap:6px; margin-left:auto; order:99;
+  }
+  .pin-btn{
+    background:none; border:none; cursor:pointer; font-size:16px; line-height:1;
+    padding:2px; color:var(--muted); opacity:.55;
+  }
+  .pin-btn.active{opacity:1; color:#f9ab00;}
+  .marker-dots{display:flex; gap:3px;}
+  .marker-dot{
+    width:14px; height:14px; border-radius:50%; cursor:pointer;
+    border:2px solid var(--line); padding:0; box-sizing:border-box;
+  }
+  .marker-dot.active{border-color:var(--text); box-shadow:0 0 0 1px var(--text);}
+  .card.pinned{border-color:#f9ab00; box-shadow:0 0 0 1px #f9ab0055;}
+  .pin-flag{font-size:12px; margin-right:4px;}
+  .clickable-box{cursor:pointer;}
+  .clickable-box:hover{background:var(--chip-bg);}
+  .clickable-box.active{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent);}
+  .detail-sortbar{
+    display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; color:var(--muted); font-size:12px;
+  }
+  .detail-sortbar select{
+    background:#fff; border:1px solid var(--line); color:var(--text);
+    padding:5px 10px; font-family:inherit; font-size:12px; border-radius:8px;
+  }
+  .detail-sortbar .dirbtn{padding:5px 10px; font-size:12px;}
+  .detail-panel{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; margin:4px 0 14px; font-size:12.5px;
+  }
+  .detail-panel .drow{
+    display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px;
+    padding:6px 0; border-top:1px solid var(--line);
+  }
+  .detail-panel .drow:first-of-type{border-top:none;}
+  .detail-cat-summary{
+    display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;
+  }
   /* おすすめタブ */
   .strategy{
     background:var(--card); border:1px solid var(--line); border-radius:12px;
@@ -239,6 +282,15 @@
     <div class="controls">
       <select id="dateSelect"></select>
       <input type="text" id="filterBox" placeholder="銘柄フィルタ (例: AAPL)">
+      <select id="markerFilter">
+        <option value="">マーカー: すべて</option>
+        <option value="pinned">📌 ピン止めのみ</option>
+        <option value="red">🔴 レッド</option>
+        <option value="yellow">🟡 イエロー</option>
+        <option value="green">🟢 グリーン</option>
+        <option value="blue">🔵 ブルー</option>
+        <option value="purple">🟣 パープル</option>
+      </select>
     </div>
   </div>
   <div class="tabs">
@@ -314,9 +366,13 @@
     <div id="simPolicy" class="sim-policy"></div>
     <div id="simSummary" class="sim-summary"></div>
     <div class="analysis-title">期間損益</div>
+    <div class="disclaimer" style="margin:0 0 6px;">枠をタップすると、その期間中に発生した売買(取引銘柄)を表示します。</div>
     <div id="simPeriod" class="sim-summary"></div>
+    <div id="simPeriodDetail"></div>
     <div class="analysis-title">予想的中率</div>
+    <div class="disclaimer" style="margin:0 0 6px;">枠をタップすると、その期間の予想の内訳(銘柄・予想の種類・変化幅・的中/未達)を表示します。</div>
     <div id="simAccuracy" class="sim-accuracy"></div>
+    <div id="simAccuracyDetail"></div>
     <div class="analysis-title">予想の学習状況(勝ちパターン・負けパターン)</div>
     <div id="simLearning" class="sim-accuracy"></div>
     <div class="analysis-title">強化学習モデルの状況</div>
@@ -339,6 +395,72 @@
 
 <script>
 const DATA_DIR = "data"; // docs/data/ (index.htmlと同じdocsフォルダ内)
+
+// --------------------------------------------------------------------------
+// 銘柄のピン止め・マーカー(ブラウザのキャッシュ=localStorageに保存)
+// --------------------------------------------------------------------------
+const TAGS_KEY = "stockScannerTags_v1";
+const MARKER_COLORS = [
+  {key:"red",    color:"#c5221f", label:"レッド"},
+  {key:"yellow", color:"#f9ab00", label:"イエロー"},
+  {key:"green",  color:"#188038", label:"グリーン"},
+  {key:"blue",   color:"#1a73e8", label:"ブルー"},
+  {key:"purple", color:"#8430ce", label:"パープル"},
+];
+function loadTags(){
+  try{ return JSON.parse(localStorage.getItem(TAGS_KEY) || "{}"); }catch(e){ return {}; }
+}
+function saveTagsToStorage(){
+  try{ localStorage.setItem(TAGS_KEY, JSON.stringify(tagsCache)); }catch(e){}
+}
+let tagsCache = loadTags();
+function getTag(sym){ return tagsCache[sym] || {pinned:false, marker:null}; }
+function isPinned(sym){ return !!getTag(sym).pinned; }
+function togglePin(sym){
+  const t = getTag(sym);
+  t.pinned = !t.pinned;
+  tagsCache[sym] = t;
+  saveTagsToStorage();
+  rerenderCurrentTab();
+}
+function setMarker(sym, marker){
+  const t = getTag(sym);
+  t.marker = (t.marker === marker) ? null : marker;
+  tagsCache[sym] = t;
+  saveTagsToStorage();
+  rerenderCurrentTab();
+}
+function rerenderCurrentTab(){
+  if(["day_trade","long_term","major","holdings"].includes(currentTab)) renderCards();
+}
+// カードの上部(.card-top)に差し込むピン止め・マーカーのコントロール
+function pinMarkerHtml(sym){
+  const t = getTag(sym);
+  const dots = MARKER_COLORS.map(m =>
+    `<button type="button" class="marker-dot${t.marker===m.key?" active":""}" style="background:${m.color};"
+      title="${m.label}マーカー" onclick="event.stopPropagation(); setMarker('${sym}','${m.key}');"></button>`
+  ).join("");
+  return `<div class="pin-row">
+    <button type="button" class="pin-btn${t.pinned?" active":""}" title="ピン止め"
+      onclick="event.stopPropagation(); togglePin('${sym}');">${t.pinned?"📌":"📍"}</button>
+    <div class="marker-dots">${dots}</div>
+  </div>`;
+}
+// 一覧(カード配列)に対して、ピン止め優先の並び替え + マーカーフィルタを適用する
+function applyPinAndMarkerFilter(rows){
+  const mf = document.getElementById("markerFilter") ? document.getElementById("markerFilter").value : "";
+  let out = rows;
+  if(mf === "pinned"){
+    out = out.filter(r => isPinned(r.symbol));
+  } else if(mf){
+    out = out.filter(r => (getTag(r.symbol).marker) === mf);
+  }
+  return out;
+}
+function pinSortComparator(a, b){
+  const pa = isPinned(a.symbol) ? 1 : 0, pb = isPinned(b.symbol) ? 1 : 0;
+  return pb - pa; // ピン止めを先頭に
+}
 
 const SORT_OPTIONS = {
   day_trade: [
@@ -685,6 +807,40 @@ async function loadRlStatus(force){
 const ACCURACY_WINDOW_LABELS = {all:"全期間", d1:"1日後", d5:"5日後", d30:"30日後"};
 const PERIOD_LABELS = {d1:"1日の収支", d7:"1週間の収支", d30:"1か月の収支"};
 
+// 的中率/期間損益の詳細パネル: 開閉状態・並び替え状態(もう一度クリックで閉じる)
+let openAccuracyKey = null;
+let openPeriodKey = null;
+let accuracyDetailCache = null; // {key, results}
+let periodDetailCache = null;   // {key, trades}
+let accuracySortKey = "date";
+let accuracySortDir = "desc";
+let periodSortKey = "date";
+let periodSortDir = "desc";
+
+const ACC_SORT_OPTIONS = [
+  {key:"date",     label:"日付"},
+  {key:"symbol",   label:"銘柄名"},
+  {key:"hit",      label:"的中/未達"},
+  {key:"movePct",  label:"変化率"},
+  {key:"category", label:"予想の種類"},
+];
+const PERIOD_SORT_OPTIONS = [
+  {key:"date",   label:"日付"},
+  {key:"symbol", label:"銘柄名"},
+  {key:"side",   label:"売買"},
+  {key:"amount", label:"金額"},
+  {key:"pl",     label:"実現損益"},
+];
+
+function updateBoxActiveStates(){
+  document.querySelectorAll(".sim-accuracy .box[data-acc-key]").forEach(b => {
+    b.classList.toggle("active", b.dataset.accKey === openAccuracyKey);
+  });
+  document.querySelectorAll("#simPeriod .box[data-period-key]").forEach(b => {
+    b.classList.toggle("active", b.dataset.periodKey === openPeriodKey);
+  });
+}
+
 function renderSimulation(){
   const policyEl = document.getElementById("simPolicy");
   const summaryEl = document.getElementById("simSummary");
@@ -695,6 +851,14 @@ function renderSimulation(){
   const posEl = document.getElementById("simPositions");
   const tradesEl = document.getElementById("simTrades");
   const resetEl = document.getElementById("simResetBox");
+
+  // データが入れ替わるタイミングでは、開いていた詳細パネルを閉じてリセットする
+  openAccuracyKey = null; openPeriodKey = null;
+  accuracyDetailCache = null; periodDetailCache = null;
+  const accDetailEl0 = document.getElementById("simAccuracyDetail");
+  const perDetailEl0 = document.getElementById("simPeriodDetail");
+  if(accDetailEl0) accDetailEl0.innerHTML = "";
+  if(perDetailEl0) perDetailEl0.innerHTML = "";
 
   loadSimulation().then(sim => {
     if(!sim){
@@ -734,18 +898,19 @@ function renderSimulation(){
       const body = p.pl!=null
         ? `<div class="val ${cls}">${(p.pl>0?"+":"")}${fmtUsd(p.pl)} (${fmtPct(p.pl_pct)})</div>`
         : `<div class="val" style="font-size:13px;color:var(--muted);">データ収集中</div>`;
-      return `<div class="box"><div class="lbl">${PERIOD_LABELS[k]}</div>${body}</div>`;
+      return `<div class="box clickable-box" data-period-key="${k}" onclick="showPeriodDetail('${k}')"><div class="lbl">${PERIOD_LABELS[k]}</div>${body}</div>`;
     }).join("");
 
     const acc = sim.accuracy || {};
     accEl.innerHTML = ["all","d1","d5","d30"].map(k => {
       const a = acc[k] || {};
-      return `<div class="box">
+      return `<div class="box clickable-box" data-acc-key="${k}" onclick="showAccuracyDetail('${k}')">
         <div class="lbl">${ACCURACY_WINDOW_LABELS[k]}</div>
         <div class="val">${a.rate!=null ? a.rate.toFixed(1)+"%" : "—"}</div>
         <div class="n">${a.total ? `${a.hits}/${a.total}件` : "判定材料なし"}</div>
       </div>`;
     }).join("");
+    updateBoxActiveStates();
 
     const positions = sim.positions || [];
     posEl.innerHTML = positions.length ? positions.map(p => {
@@ -753,7 +918,7 @@ function renderSimulation(){
       const streakNote = p.bear_streak > 0
         ? ` <span style="color:var(--down);font-size:11px;">弱気${p.bear_streak}/${p.sell_streak_threshold}回連続中(保持中)</span>` : "";
       return `<div class="row">
-        <span class="sym">${p.symbol}</span>
+        <span class="sym sym-link" onclick="gotoAnalysis('${p.symbol}')">${p.symbol}</span>
         <span>数量 ${fmtNum(p.qty,4)}</span>
         <span>取得単価 ${fmtUsd(p.avg_cost)}</span>
         <span>現在値 ${fmtUsd(p.price)}</span>
@@ -767,7 +932,7 @@ function renderSimulation(){
     tradesEl.innerHTML = trades.length ? trades.slice(0,50).map(t => `
       <div class="row">
         <span class="side ${t.side}">${t.side==="buy"?"買い":"売り"}</span>
-        <span class="sym">${t.symbol}</span>
+        <span class="sym sym-link" onclick="gotoAnalysis('${t.symbol}')">${t.symbol}</span>
         <span>${t.time}</span>
         <span>数量 ${fmtNum(t.qty,4)}</span>
         <span>価格 ${fmtUsd(t.price)}</span>
@@ -865,6 +1030,247 @@ function renderSimulation(){
   });
 }
 
+// day_offset(=何日後まで)を指定して的中判定する版(全期間/1日後/5日後/30日後の内訳表示用)。
+// Python側の _judge_entry_hit と同じロジック。
+function judgeEntryHitJs(entry, hist, dayOffset, todayStr){
+  const p0 = entry.price_at_prediction;
+  const made = entry.made_date;
+  if(p0 == null || !hist || !hist.length || !made) return null;
+  let endStr;
+  if(dayOffset != null){
+    const d = new Date(made + "T00:00:00");
+    d.setDate(d.getDate() + dayOffset);
+    endStr = d.toISOString().slice(0,10);
+  } else {
+    endStr = entry.horizon_end;
+  }
+  if(!endStr || endStr > todayStr) return null;
+  const pts = hist.filter(h => h.date && h.date >= made && h.date <= endStr && h.close != null);
+  if(!pts.length) return null;
+  const category = entry.category || "";
+  const closes = pts.map(h => h.close);
+  let hit, movePct;
+  if(category.includes("値上がり")){
+    movePct = (Math.max(...closes) - p0) / p0 * 100;
+    hit = movePct > 0;
+  } else if(category.includes("値下がり")){
+    movePct = (Math.min(...closes) - p0) / p0 * 100;
+    hit = movePct < 0;
+  } else {
+    movePct = Math.max(...closes.map(c => Math.abs((c - p0) / p0 * 100)));
+    hit = movePct < 3;
+  }
+  return {hit, movePct};
+}
+
+const ACC_WINDOW_OFFSET = {all:null, d1:1, d5:5, d30:30};
+
+// シミュレーションタブ: 予想的中率の枠をタップしたときの内訳表示
+// (その期間の判定済みの予想を、銘柄・予想の種類・実際の変化幅・的中/未達つきで一覧表示する)
+async function showAccuracyDetail(key){
+  const el = document.getElementById("simAccuracyDetail");
+  if(!el) return;
+
+  // もう一度同じ枠をクリックしたら閉じる
+  if(openAccuracyKey === key){
+    openAccuracyKey = null;
+    accuracyDetailCache = null;
+    el.innerHTML = "";
+    updateBoxActiveStates();
+    return;
+  }
+  openAccuracyKey = key;
+  updateBoxActiveStates();
+  el.innerHTML = `<div class="status" style="padding:20px 0;">読み込み中…</div>`;
+
+  const log = await loadPredictionsLog();
+  const entries = log.entries || [];
+  const todayStr = new Date().toISOString().slice(0,10);
+  const offset = ACC_WINDOW_OFFSET[key];
+
+  const results = [];
+  for(const e of entries){
+    if(!e.symbol) continue;
+    const hist = await loadSymbolHistory(e.symbol);
+    const j = judgeEntryHitJs(e, hist, offset, todayStr);
+    if(j) results.push({...e, hit:j.hit, movePct:j.movePct});
+  }
+
+  accuracyDetailCache = {key, results};
+  renderAccuracyDetail();
+}
+
+function accuracyRowComparator(a, b){
+  let va, vb;
+  switch(accuracySortKey){
+    case "symbol":   va = a.symbol || ""; vb = b.symbol || ""; break;
+    case "hit":      va = a.hit ? 1 : 0;  vb = b.hit ? 1 : 0;  break;
+    case "movePct":  va = a.movePct || 0; vb = b.movePct || 0; break;
+    case "category": va = a.category || ""; vb = b.category || ""; break;
+    default:         va = a.made_at || a.made_date || ""; vb = b.made_at || b.made_date || "";
+  }
+  let cmp = (typeof va === "string") ? va.localeCompare(vb) : (va - vb);
+  return accuracySortDir === "desc" ? -cmp : cmp;
+}
+
+// 的中率の内訳パネルを、現在の並び替え設定で再描画する(データの再取得はしない)
+function renderAccuracyDetail(){
+  const el = document.getElementById("simAccuracyDetail");
+  if(!el || !accuracyDetailCache) return;
+  const {key, results} = accuracyDetailCache;
+
+  if(!results.length){
+    el.innerHTML = `<div class="detail-panel"><div class="sim-empty">${ACCURACY_WINDOW_LABELS[key]}の判定材料がまだありません。</div></div>`;
+    return;
+  }
+
+  // 予想の種類(カテゴリ)ごとの的中率
+  const byCat = {};
+  results.forEach(r => {
+    const c = r.category || "—";
+    byCat[c] = byCat[c] || {hits:0, total:0};
+    byCat[c].total++;
+    if(r.hit) byCat[c].hits++;
+  });
+  const catHtml = Object.entries(byCat).map(([cat, v]) => {
+    const meta = PREDICTION_META[cat] || {color:"#5f6368", bg:"#f1f3f4"};
+    const rate = (v.hits / v.total * 100).toFixed(1);
+    return `<span class="chip" style="background:${meta.bg};color:${meta.color};">${cat} ${rate}% (${v.hits}/${v.total}件)</span>`;
+  }).join("");
+
+  const sorted = [...results].sort(accuracyRowComparator);
+  const rowsHtml = sorted.slice(0,100).map(r => {
+    const sign = r.movePct >= 0 ? "+" : "";
+    const meta = PREDICTION_META[r.category] || {color:"#5f6368"};
+    return `<div class="drow">
+      <span class="sym sym-link" style="min-width:52px;" onclick="gotoAnalysis('${r.symbol}')">${r.symbol}</span>
+      <span style="font-weight:700;color:${meta.color};">${r.category||"—"}</span>
+      <span style="color:var(--muted);">${r.made_date}時点</span>
+      <span style="font-weight:700;color:${r.hit?"var(--up)":"var(--accent)"};">${r.hit?"的中":"未達"} (${sign}${r.movePct.toFixed(1)}%)</span>
+    </div>`;
+  }).join("");
+
+  const sortHtml = `<div class="detail-sortbar">
+    並び替え:
+    <select id="accDetailSort">
+      ${ACC_SORT_OPTIONS.map(o => `<option value="${o.key}"${o.key===accuracySortKey?" selected":""}>${o.label}</option>`).join("")}
+    </select>
+    <button id="accDetailDirToggle" type="button" class="dirbtn">${accuracySortDir==="desc"?"▼ 降順":"▲ 昇順"}</button>
+  </div>`;
+
+  el.innerHTML = `<div class="detail-panel">
+    <div style="font-weight:700;margin-bottom:8px;">${ACCURACY_WINDOW_LABELS[key]}の内訳 ― 予想の種類別的中率(${results.length}件)</div>
+    <div class="detail-cat-summary">${catHtml}</div>
+    ${sortHtml}
+    ${rowsHtml}
+  </div>`;
+
+  document.getElementById("accDetailSort").addEventListener("change", e => {
+    accuracySortKey = e.target.value;
+    renderAccuracyDetail();
+  });
+  document.getElementById("accDetailDirToggle").addEventListener("click", () => {
+    accuracySortDir = accuracySortDir === "desc" ? "asc" : "desc";
+    renderAccuracyDetail();
+  });
+}
+
+const PERIOD_DAYS = {d1:1, d7:7, d30:30};
+
+// シミュレーションタブ: 期間損益の枠をタップしたときに、その期間の売買銘柄を一覧表示する
+async function showPeriodDetail(key){
+  const el = document.getElementById("simPeriodDetail");
+  if(!el) return;
+
+  // もう一度同じ枠をクリックしたら閉じる
+  if(openPeriodKey === key){
+    openPeriodKey = null;
+    periodDetailCache = null;
+    el.innerHTML = "";
+    updateBoxActiveStates();
+    return;
+  }
+  openPeriodKey = key;
+  updateBoxActiveStates();
+  el.innerHTML = `<div class="status" style="padding:20px 0;">読み込み中…</div>`;
+
+  const sim = await loadSimulation();
+  const allTrades = (sim && sim.trades) || [];
+
+  const days = PERIOD_DAYS[key];
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().slice(0,10);
+  const trades = allTrades.filter(t => (t.time||"").slice(0,10) >= cutoffStr);
+
+  periodDetailCache = {key, trades, empty: !allTrades.length};
+  renderPeriodDetail();
+}
+
+function periodRowComparator(a, b){
+  let va, vb;
+  switch(periodSortKey){
+    case "symbol": va = a.symbol || ""; vb = b.symbol || ""; break;
+    case "side":   va = a.side || "";   vb = b.side || "";   break;
+    case "amount": va = a.amount || 0;  vb = b.amount || 0;  break;
+    case "pl":     va = a.realized_pl || 0; vb = b.realized_pl || 0; break;
+    default:       va = a.time || ""; vb = b.time || "";
+  }
+  let cmp = (typeof va === "string") ? va.localeCompare(vb) : (va - vb);
+  return periodSortDir === "desc" ? -cmp : cmp;
+}
+
+// 期間損益の内訳パネルを、現在の並び替え設定で再描画する(データの再取得はしない)
+function renderPeriodDetail(){
+  const el = document.getElementById("simPeriodDetail");
+  if(!el || !periodDetailCache) return;
+  const {key, trades, empty} = periodDetailCache;
+
+  if(empty){
+    el.innerHTML = `<div class="detail-panel"><div class="sim-empty">まだ取引履歴がありません。</div></div>`;
+    return;
+  }
+  if(!trades.length){
+    el.innerHTML = `<div class="detail-panel"><div class="sim-empty">${PERIOD_LABELS[key]}に該当する売買はありません。</div></div>`;
+    return;
+  }
+
+  const sorted = [...trades].sort(periodRowComparator);
+  const rowsHtml = sorted.map(t => `
+    <div class="drow">
+      <span class="side ${t.side}">${t.side==="buy"?"買い":"売り"}</span>
+      <span class="sym sym-link" style="min-width:52px;" onclick="gotoAnalysis('${t.symbol}')">${t.symbol}</span>
+      <span style="color:var(--muted);">${t.time}</span>
+      <span>数量 ${fmtNum(t.qty,4)}</span>
+      <span>価格 ${fmtUsd(t.price)}</span>
+      <span>金額 ${fmtUsd(t.amount)}</span>
+      ${t.side==="sell" && t.realized_pl!=null ? `<span style="font-weight:700;color:${t.realized_pl>=0?"var(--up)":"var(--down)"};">実現損益 ${t.realized_pl>0?"+":""}${fmtUsd(t.realized_pl)}</span>` : ""}
+    </div>`).join("");
+
+  const sortHtml = `<div class="detail-sortbar">
+    並び替え:
+    <select id="perDetailSort">
+      ${PERIOD_SORT_OPTIONS.map(o => `<option value="${o.key}"${o.key===periodSortKey?" selected":""}>${o.label}</option>`).join("")}
+    </select>
+    <button id="perDetailDirToggle" type="button" class="dirbtn">${periodSortDir==="desc"?"▼ 降順":"▲ 昇順"}</button>
+  </div>`;
+
+  el.innerHTML = `<div class="detail-panel">
+    <div style="font-weight:700;margin-bottom:8px;">${PERIOD_LABELS[key]} ― 売買した銘柄(${trades.length}件)</div>
+    ${sortHtml}
+    ${rowsHtml}
+  </div>`;
+
+  document.getElementById("perDetailSort").addEventListener("change", e => {
+    periodSortKey = e.target.value;
+    renderPeriodDetail();
+  });
+  document.getElementById("perDetailDirToggle").addEventListener("click", () => {
+    periodSortDir = periodSortDir === "desc" ? "asc" : "desc";
+    renderPeriodDetail();
+  });
+}
+
 function renderResetBox(el, currentInitialCash){
   if(!el) return;
   const amt = currentInitialCash!=null ? currentInitialCash : 100;
@@ -914,15 +1320,17 @@ function cardDayTrade(r){
   const chgCls = (r.day_change_pct||0) >= 0 ? "pos" : "neg";
   const accId = `acc-day-${r.symbol}`;
   return `
-  <div class="card">
+  <div class="card${isPinned(r.symbol)?" pinned":""}">
     <div class="card-top">
-      <span class="sym">${r.symbol}</span>
+      <span class="pin-flag">${isPinned(r.symbol)?"📌":""}</span>
+      <span class="sym sym-link" onclick="gotoAnalysis('${r.symbol}')">${r.symbol}</span>
       <span class="price">${fmtUsd(r.price)}</span>
       <span class="chg ${chgCls}">${fmtPct(r.day_change_pct)}</span>
       <div class="scores">
         <span class="badge opp">利益期待 ${fmtNum(r.day_opportunity)}</span>
         <span class="badge risk">リスク ${fmtNum(r.day_risk)}</span>
       </div>
+      ${pinMarkerHtml(r.symbol)}
     </div>
     <div class="stat-row">
       <span class="chip"><span class="lbl">ATR</span>${fmtNum(r.atr_pct,1)}%</span>
@@ -949,12 +1357,14 @@ function cardLongTerm(r, showScore){
       <div class="scores"><span class="badge opp">利益期待 ${fmtNum(r.long_opportunity)}</span></div>`;
   const accId = `acc-long-${r.symbol}`;
   return `
-  <div class="card">
+  <div class="card${isPinned(r.symbol)?" pinned":""}">
     <div class="card-top">
-      <span class="sym">${r.symbol}</span>
+      <span class="pin-flag">${isPinned(r.symbol)?"📌":""}</span>
+      <span class="sym sym-link" onclick="gotoAnalysis('${r.symbol}')">${r.symbol}</span>
       <span class="price">${fmtUsd(r.price)}</span>
       <span class="chg ${(r.mom_3m||0)>=0?'pos':'neg'}">3ヶ月 ${fmtPct(r.mom_3m)}</span>
       ${scoreHtml}
+      ${pinMarkerHtml(r.symbol)}
     </div>
     <div class="stat-row">
       <span class="chip"><span class="lbl">200日線</span>${r.above_sma200 ? "上" : "下"}</span>
@@ -996,15 +1406,17 @@ function cardHolding(r){
   const plCls = (pl||0) >= 0 ? "pos" : "neg";
   const accId = `acc-hold-${r.symbol}`;
   return `
-  <div class="card">
+  <div class="card${isPinned(r.symbol)?" pinned":""}">
     <div class="card-top">
-      <span class="sym">${r.symbol}</span>
+      <span class="pin-flag">${isPinned(r.symbol)?"📌":""}</span>
+      <span class="sym sym-link" onclick="gotoAnalysis('${r.symbol}')">${r.symbol}</span>
       <span class="price">${fmtUsd(r.price || r.last_price)}</span>
       <span class="chg ${plCls}">含み損益 ${fmtUsd(pl)} (${fmtPct(r.unrealized_pl_rate)})</span>
       <div class="scores">
         ${r.long_opportunity!=null ? `<span class="badge opp">利益期待 ${fmtNum(r.long_opportunity)}</span>` : ""}
         ${r.long_risk!=null ? `<span class="badge risk">リスク ${fmtNum(r.long_risk)}</span>` : ""}
       </div>
+      ${pinMarkerHtml(r.symbol)}
     </div>
     <div class="stat-row">
       <span class="chip"><span class="lbl">保有数量</span>${(()=>{const q=holdingQty(r);return q==null?"—":fmtNum(q,2)+"株";})()}</span>
@@ -1029,6 +1441,7 @@ function renderCards(){
   const rows0 = (currentData[currentTab] || []);
   const filterVal = document.getElementById("filterBox").value.trim().toUpperCase();
   let rows = filterVal ? rows0.filter(r => (r.symbol||"").toUpperCase().includes(filterVal)) : rows0.slice();
+  rows = applyPinAndMarkerFilter(rows);
 
   // 計算フィールド: タイミングの良さ = 利益期待スコア - リスクスコア(簡易指標)
   rows = rows.map(r => ({
@@ -1049,12 +1462,14 @@ function renderCards(){
     }
     return sortDir==="asc" ? av-bv : bv-av;
   });
+  // ピン止めされた銘柄を先頭に持ってくる(安定ソート)
+  rows.sort(pinSortComparator);
 
   const wrap = document.getElementById("cardsWrap");
   if(rows.length === 0){
     wrap.innerHTML = currentTab === "holdings"
       ? `<div class="status">保有株情報がありません(Webull口座が未接続か、保有株が無い可能性があります)</div>`
-      : `<div class="status">該当する銘柄がありません</div>`;
+      : `<div class="status">該当する銘柄がありません(フィルタ条件をご確認ください)</div>`;
     return;
   }
   wrap.innerHTML = rows.map(r => {
@@ -1448,6 +1863,7 @@ function renderAnalysisSymbolList(){
 async function init(){
   document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => switchTab(t.dataset.tab)));
   document.getElementById("filterBox").addEventListener("input", renderCards);
+  document.getElementById("markerFilter").addEventListener("change", renderCards);
   document.getElementById("sortSelect").addEventListener("change", (e) => {
     sortKey = e.target.value;
     const opt = SORT_OPTIONS[currentTab].find(o => o.key === sortKey);
