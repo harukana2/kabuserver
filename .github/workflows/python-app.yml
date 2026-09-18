@@ -25,6 +25,20 @@ on:
         description: "S&P500からファンダメンタルズ取得する上限件数(空欄なら通常の60)"
         required: false
         default: ""
+      sim_reset:
+        description: "シミュレーションをリセットする(保有株・取引履歴・現金残高を全て破棄して最初からやり直す)"
+        type: boolean
+        required: false
+        default: false
+      sim_initial_cash:
+        description: "リセット時の初期資金(空欄なら前回値、前回もなければ$100)"
+        required: false
+        default: ""
+      sim_reset_learning:
+        description: "学習データ(的中率の学習)も一緒にリセットする"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write  # data/ フォルダへのコミットに必要
@@ -59,6 +73,9 @@ jobs:
           SCAN_SKIP_SP500: ${{ github.event.inputs.skip_sp500 }}
           SCAN_FUNDAMENTALS_TOP_N: ${{ github.event.inputs.fundamentals_top_n }}
           SCAN_SP500_TOP_N: ${{ github.event.inputs.sp500_top_n }}
+          SIM_RESET: ${{ github.event.inputs.sim_reset }}
+          SIM_INITIAL_CASH: ${{ github.event.inputs.sim_initial_cash }}
+          SIM_RESET_LEARNING: ${{ github.event.inputs.sim_reset_learning }}
         run: python us_stock_scanner_webull_openapi.py
 
       - name: Commit and push results
