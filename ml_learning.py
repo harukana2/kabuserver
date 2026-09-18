@@ -38,6 +38,7 @@ FEATURE_NAMES = [
     "rsi14", "above_sma200", "above_sma50", "above_sma20",
     "mom_1m", "mom_3m", "atr_pct",
     "macd_bullish_cross", "macd_bearish_cross",
+    "news_sentiment_score", "news_sentiment_conf",
 ]
 
 try:
@@ -70,7 +71,12 @@ def _f(v, default: float = 0.0) -> float:
 
 
 def featurize(row: dict) -> list:
-    """テクニカル指標の行(row)から、モデル入力用の特徴量ベクトルを作る。"""
+    """テクニカル指標の行(row)から、モデル入力用の特徴量ベクトルを作る。
+
+    news_sentiment_score / news_sentiment_conf は yfinance の news 見出しを
+    news_sentiment.py で辞書ベース(自前・無料)にスコア化したもの。
+    ニュースが取得できなかった銘柄は 0.0(中立・信頼度なし)として扱われる。
+    """
     return [
         _f(row.get("rsi14"), 50.0),
         _b(row.get("above_sma200")),
@@ -81,6 +87,8 @@ def featurize(row: dict) -> list:
         _f(row.get("atr_pct"), 0.0),
         1.0 if row.get("macd_bullish_cross") else 0.0,
         1.0 if row.get("macd_bearish_cross") else 0.0,
+        _f(row.get("news_sentiment_score"), 0.0),
+        _f(row.get("news_sentiment_conf"), 0.0),
     ]
 
 
@@ -157,36 +165,115 @@ def build_training_rows(predictions_log: dict, sim_trades: list, load_hist_fn, t
                 continue  # まだ判定期間が終わっていない
             reward = _paper_reward(category, pct_chg, order_usd)
 
-        rows.append((feats, kind, category, reward))
+        rows.append((feats, kind, category, reward, made))
     return rows
 
 
+def _recency_weight(made_date: str, today_str: str, halflife_days: float) -> float:
+    """予想が行われた日(made_date)が新しいほど大きい重みを返す(指数減衰)。
+    パース失敗時は中立(1.0)を返す。"""
+    try:
+        d0 = datetime.strptime(made_date, "%Y-%m-%d")
+        d1 = datetime.strptime(today_str, "%Y-%m-%d")
+        age_days = max(0.0, (d1 - d0).days)
+    except Exception:
+        return 1.0
+    if halflife_days <= 0:
+        return 1.0
+    return math.pow(0.5, age_days / halflife_days)
+
+
 class RewardModel:
-    """kind("day"/"long") ごと・行動(カテゴリ)ごとに独立した期待報酬の回帰モデル。"""
+    """kind("day"/"long") ごと・行動(カテゴリ)ごとに独立した期待報酬の回帰モデル。
+
+    単純にサンプル数が min_samples を超えたら無条件にモデルを信じるのではなく、
+    データを時系列で学習/検証に分割し、「何も学習していないベースライン
+    (=直近報酬の平均値で常に予測する)」との比較(MAE)を行う。ベースラインに
+    負けているカテゴリは validated=False としてマークし、choose_action 側で
+    活用(greedy)には使わず探索(explore)のみに回す(過学習ノイズを実運用の
+    判断に使わないようにするため)。
+    """
 
     def __init__(self):
         self.models: dict = {}  # (kind, category) -> RandomForestRegressor
         self.sample_counts: dict = {}  # (kind, category) -> int
+        self.metrics: dict = {}  # (kind, category) -> {"validated","n_val","mae_model","mae_baseline","hit_rate"}
         self.trained_at: str | None = None
 
-    def fit(self, rows: list, min_samples: int):
+    def fit(self, rows: list, min_samples: int, today_str: str | None = None,
+            recency_halflife_days: float = 60.0, val_frac: float = 0.25):
         if not SKLEARN_AVAILABLE:
             return
+        today_str = today_str or datetime.utcnow().strftime("%Y-%m-%d")
+
         by_key: dict = {}
-        for feats, kind, category, reward in rows:
-            by_key.setdefault((kind, category), []).append((feats, reward))
+        for feats, kind, category, reward, made in rows:
+            by_key.setdefault((kind, category), []).append((feats, reward, made or today_str))
+
         self.models = {}
         self.sample_counts = {}
+        self.metrics = {}
+
         for key, samples in by_key.items():
             self.sample_counts[key] = len(samples)
             if len(samples) < min_samples:
                 continue
-            X = np.array([s[0] for s in samples], dtype=float)
-            y = np.array([s[1] for s in samples], dtype=float)
+
+            # 時系列順に並べる(made日付の古い順)。ホールドアウト検証は
+            # 「未来のデータで過去のモデルを試す」形にするため、末尾側
+            # (=直近)を検証用に切り出す。
+            samples_sorted = sorted(samples, key=lambda s: s[2])
+            n = len(samples_sorted)
+            n_val = max(0, int(round(n * val_frac)))
+            # 検証セットが小さすぎる(5件未満)場合は検証をスキップし、
+            # 「未検証」として扱う(判断材料不足であって不合格ではない)。
+            if n_val >= 5 and (n - n_val) >= min_samples:
+                train_s = samples_sorted[:n - n_val]
+                val_s = samples_sorted[n - n_val:]
+
+                X_tr = np.array([s[0] for s in train_s], dtype=float)
+                y_tr = np.array([s[1] for s in train_s], dtype=float)
+                w_tr = np.array([_recency_weight(s[2], today_str, recency_halflife_days) for s in train_s],
+                                 dtype=float)
+
+                val_model = RandomForestRegressor(n_estimators=80, max_depth=6, min_samples_leaf=3,
+                                                    random_state=42, n_jobs=-1)
+                val_model.fit(X_tr, y_tr, sample_weight=w_tr)
+
+                X_val = np.array([s[0] for s in val_s], dtype=float)
+                y_val = np.array([s[1] for s in val_s], dtype=float)
+                pred_val = val_model.predict(X_val)
+
+                baseline_pred = float(np.mean(y_tr))  # 「何も学習しない」場合の予測(訓練期間の平均報酬)
+                mae_model = float(np.mean(np.abs(pred_val - y_val)))
+                mae_baseline = float(np.mean(np.abs(baseline_pred - y_val)))
+                # 符号(儲かる方向を当てたか)の一致率。実運用上の意味が分かりやすい補助指標。
+                hit_rate = float(np.mean(np.sign(pred_val) == np.sign(y_val))) if len(y_val) else None
+
+                self.metrics[key] = {
+                    "validated": True,
+                    "n_train": len(train_s),
+                    "n_val": len(val_s),
+                    "mae_model": round(mae_model, 4),
+                    "mae_baseline": round(mae_baseline, 4),
+                    "beats_baseline": mae_model < mae_baseline,
+                    "hit_rate": round(hit_rate, 4) if hit_rate is not None else None,
+                }
+            else:
+                self.metrics[key] = {"validated": False, "n_train": n, "n_val": n_val}
+
+            # 本番用モデルは全データ(検証データも含む)で、直近ほど重く
+            # 学習する(sample_weight)。検証はあくまで「信頼できるか」の
+            # 判定用であり、判定後は全データを使い切る。
+            X_all = np.array([s[0] for s in samples_sorted], dtype=float)
+            y_all = np.array([s[1] for s in samples_sorted], dtype=float)
+            w_all = np.array([_recency_weight(s[2], today_str, recency_halflife_days) for s in samples_sorted],
+                              dtype=float)
             model = RandomForestRegressor(n_estimators=80, max_depth=6, min_samples_leaf=3,
                                            random_state=42, n_jobs=-1)
-            model.fit(X, y)
+            model.fit(X_all, y_all, sample_weight=w_all)
             self.models[key] = model
+
         self.trained_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
     def predict_rewards(self, kind: str, feats: list) -> dict:
@@ -201,8 +288,18 @@ class RewardModel:
             out[category] = float(model.predict(np.array([feats], dtype=float))[0])
         return out
 
+    def is_validated_and_better(self, kind: str, category: str) -> bool:
+        """このカテゴリのモデルが、検証の結果「何も学習しないベースライン」
+        より明確に優れていると確認できているか。検証データ不足でまだ
+        判定できていない場合は False (=慎重側)を返す。"""
+        m = self.metrics.get((kind, category))
+        return bool(m and m.get("validated") and m.get("beats_baseline"))
+
     def coverage(self, kind: str) -> dict:
         return {c: self.sample_counts.get((kind, c), 0) for c in CATEGORY_ORDER}
+
+    def metrics_for(self, kind: str) -> dict:
+        return {c: self.metrics.get((kind, c)) for c in CATEGORY_ORDER}
 
 
 def save_model(model: RewardModel, path: str) -> None:
@@ -242,13 +339,24 @@ def choose_action(model: RewardModel | None, kind: str, feats: list, fallback_ca
 
     if rng.random() < epsilon:
         # 探索: 学習済みの行動の中からランダムに選ぶ(データの薄い行動にも
-        # あえて予想を出させて、次回以降の学習データを増やす)
+        # あえて予想を出させて、次回以降の学習データを増やす)。ここでは
+        # 検証未通過のモデルも対象に含めてよい(探索の目的はデータ収集)。
         category = rng.choice(list(usable.keys()))
         meta["source"] = "explore"
         meta["explored"] = True
         return category, meta
 
-    # 活用: 期待報酬が最大の行動を選ぶ
-    category = max(usable.items(), key=lambda kv: kv[1])[0]
+    # 活用(greedy): 「ホールドアウト検証で、何も学習しないベースラインより
+    # 明確に優れている」と確認できた行動の中からのみ選ぶ。検証データが
+    # 足りずまだ判定できていない/ベースラインに負けているモデルは、実運用の
+    # 判断に使うと過学習ノイズをそのまま予想に反映してしまうため除外する。
+    trustworthy = {c: r for c, r in usable.items() if model.is_validated_and_better(kind, c)}
+    if not trustworthy:
+        meta["source"] = "rule_fallback"
+        meta["reason"] = "no_validated_action_beats_baseline"
+        return fallback_category, meta
+
+    category = max(trustworthy.items(), key=lambda kv: kv[1])[0]
     meta["source"] = "model"
+    meta["trustworthy_actions"] = list(trustworthy.keys())
     return category, meta
