@@ -1,36 +1,49 @@
 # -*- coding: utf-8 -*-
 """
-scikit-learn を使った「文脈的バンディット」型の強化学習モジュール。
+scikit-learn を使った「文脈的バンディット」型の強化学習モジュール(改善版)。
 
 考え方:
-  - 状態(context) = 銘柄のテクニカル指標から作った特徴量ベクトル
-  - 行動(action)  = 予想カテゴリ(大きく値上がり/少し値上がり/変動なし/
-                     少し値下がり/大きく値下がり の5択)
-  - 報酬(reward)  = その予想が実際にシミュレーション上の売買につながって
-                     いれば実現損益($)。売買されなかった予想については、
-                     SIM_BUY_USD_PER_ORDER 相当を「紙上で」その方向に
-                     建てたと仮定した場合の概算損益($)で代用する
-                     (そうしないと「変動なし」や不的中で買われなかった
-                     予想には一切の学習信号が付かず、モデルが育たないため)。
+  - 状態(context) = 銘柄のテクニカル指標+ニュース感情から作った特徴量ベクトル
+  - 行動(action)  = 予想カテゴリ(大きく値下がり/少し値下がり/変動なし/
+                     少し値上がり/大きく値上がり の5択)
+  - 報酬(reward)  = その行動を取った場合の概算損益($)。株価の実績から計算する。
 
-行動(カテゴリ)ごとに独立した回帰モデル(RandomForestRegressor)を学習し、
-「この特徴量でこの行動を取ったら、期待報酬はいくらか」を予測する。
-推論時は5つの行動の期待報酬を比較して最大のものを選ぶが、
-一定確率(epsilon)でランダムな行動を選び、データの薄い行動についても
-探索的にサンプルを集める(= ε-greedy方策)。
+旧版からの主な変更点
+--------------------
+1. 【フルインフォメーション学習】報酬は実績の騰落率から「全5行動分」を計算できる
+   ので、1件の予想ログから5行(各行動の反事後報酬)の学習データを作る。
+   旧版は「実際に選んだ1行動」分しか使わず、全行動が20件に達するまで学習が
+   始まらなかった(rl_status.json で training_rows=8 / 学習済み行動0 だった原因)。
+2. 【報酬の一貫性】実売買の実現損益(銘柄・種別と日付だけの粗い対応づけで、
+   別予想との重複や「値下がり」予想へのロング損益の混入があった)は使わず、
+   全行動で同一の定義(価格ベースの紙上損益)に統一。
+   「大きく/少し」はポジションサイズ(1.0/0.5)の違いとして報酬に反映し、
+   自信が無いときは小さい行動、確信があるときは大きい行動が選ばれるようにした。
+3. 【未学習ログの救済】
+   - 特徴量が旧バージョン(次元数が少ない)のログは、足りない末尾を中立値で
+     埋めて利用する(旧版は次元不一致で再学習全体が失敗し得た)。
+   - 判定期限前でも一定割合(MIN_PROVISIONAL_FRAC)以上経過していれば、
+     その時点までの値動きを「暫定ラベル」として低い重みで利用する。
+   - 履歴が期限まで届いていない場合も同様に暫定扱い(旧版は黙って途中までの
+     損益を完全なラベルとして使っていた)。
+   - 使えなかったログは理由別に件数を LAST_BUILD_STATS に記録する。
+4. 【検証の改善】学習/検証の分割を「日付単位」にして、同日の銘柄が学習側と
+   検証側にまたがる漏れを防止。検証には確定ラベルのみ使用し、MAE がベース
+   ラインに勝つことに加えて符号一致率 >= 0.5 も要求する。
+5. 【活用時の安全弁】検証合格の行動の中で最大の期待報酬が 0 以下なら、
+   「どの行動も儲からない」と判断して「変動なし」(ノーポジション)を選ぶ。
 
 学習は本体スクリプトの実行のたびに、蓄積された predictions_log.json と
-simulation.json の取引履歴からゼロから再学習する(GitHub Actions上の
-ステートレスな実行を前提としており、増分学習ではなくバッチ再学習)。
+価格履歴からゼロから再学習する(GitHub Actions上のステートレスな実行を前提とした
+バッチ再学習)。
 """
 from __future__ import annotations
 
-import json
 import math
 import os
 import pickle
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 
 CATEGORY_ORDER = ["大きく値下がり", "少し値下がり", "変動なし", "少し値上がり", "大きく値上がり"]
 
@@ -40,6 +53,25 @@ FEATURE_NAMES = [
     "macd_bullish_cross", "macd_bearish_cross",
     "news_sentiment_score", "news_sentiment_conf",
 ]
+# 旧バージョンの短い特徴量を末尾パディングするときの中立値(featurize の既定値と同じ)
+FEATURE_DEFAULTS = [50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+# 「大きく」「少し」をポジションサイズの違いとして報酬に反映する
+SIZE_MULT = {
+    "大きく値上がり": 1.0, "少し値上がり": 0.5, "変動なし": 0.0,
+    "少し値下がり": 0.5, "大きく値下がり": 1.0,
+}
+
+# 判定期限に対して履歴がこの割合以上カバーしていれば「確定ラベル」とみなす
+COMPLETE_FRAC = 0.8
+# 期限前でも、この割合以上経過していれば「暫定ラベル」として学習に使う
+MIN_PROVISIONAL_FRAC = 0.4
+# 暫定ラベルの基本重み(実際の重み = PROVISIONAL_WEIGHT * 経過割合)
+PROVISIONAL_WEIGHT = 0.5
+
+# 直近の build_training_rows の集計(使えた/使えなかった理由別の件数)。
+# 本体スクリプトが rl_status.json に書き出して原因調査に使う。
+LAST_BUILD_STATS: dict = {}
 
 try:
     import numpy as np
@@ -92,112 +124,156 @@ def featurize(row: dict) -> list:
     ]
 
 
+def _normalize_feats(feats):
+    """ログ中の特徴量を現行の次元数にそろえる。
+    戻り値: (ベクトル or None, 状態) 状態は "ok" / "padded" / 失敗理由。"""
+    if not isinstance(feats, (list, tuple)) or len(feats) == 0:
+        return None, "no_features"
+    n = len(FEATURE_NAMES)
+    if len(feats) > n:
+        return None, "bad_feature_len"
+    vec = [_f(v, FEATURE_DEFAULTS[i]) for i, v in enumerate(feats)]
+    if len(vec) < n:
+        vec += FEATURE_DEFAULTS[len(vec):]
+        return vec, "padded"
+    return vec, "ok"
+
+
 def _paper_reward(category: str, pct_chg: float, order_usd: float) -> float:
-    """実際には売買されなかった予想について、$order_usdを紙上でその方向に
-    建てたと仮定した場合の概算損益($)を計算する(報酬の代用値)。"""
+    """行動(カテゴリ)を取った場合の概算損益($)。全行動で同一の定義。
+
+    - 値上がり系: order_usd × サイズ倍率 × 騰落率(買った場合の損益)
+    - 値下がり系: 下がると予想して避けた/空売りした価値として符号を反転
+    - 変動なし  : ノーポジション。実際に動いた分だけ機会損失として小さく減点
+    """
+    mult = SIZE_MULT.get(category, 1.0)
     if "値上がり" in category:
-        return order_usd * (pct_chg / 100.0)
+        return order_usd * mult * (pct_chg / 100.0)
     if "値下がり" in category:
-        # 「下がる」と予想して実際に下がった/上がったかで正負が決まる
-        # (空売りではなく、あくまで「買わずに避けた」ことの価値として符号を反転)
-        return order_usd * (-pct_chg / 100.0)
-    # 「変動なし」: 実際に動いた分だけ、機会損失/無駄な静観として小さく減点
+        return order_usd * mult * (-pct_chg / 100.0)
     return -order_usd * (abs(pct_chg) / 100.0) * 0.3
 
 
-def _actual_pct_change(entry: dict, hist: list, today_str: str):
+def _parse_date(s):
+    try:
+        return datetime.strptime(str(s)[:10], "%Y-%m-%d")
+    except Exception:
+        return None
+
+
+def _actual_return(entry: dict, hist: list, today_str: str):
+    """予想日から(判定期限 or 今日の早い方)までの騰落率を返す。
+    戻り値: (pct, frac, reason)。frac は期限に対する履歴のカバー率(0〜1)。"""
     p0 = entry.get("price_at_prediction")
     made = entry.get("made_date")
     end_str = entry.get("horizon_end")
-    if p0 is None or not hist or not made or not end_str or end_str > today_str:
-        return None
+    if not p0 or not made or not end_str:
+        return None, 0.0, "no_price_or_dates"
+    if not hist:
+        return None, 0.0, "no_history"
+    upper = min(end_str, today_str)
     pts = sorted(
-        [h for h in hist if h.get("date") and made <= h["date"] <= end_str and h.get("close") is not None],
+        [h for h in hist if h.get("date") and made <= h["date"] <= upper and h.get("close") is not None],
         key=lambda h: h["date"],
     )
-    if not pts or not p0:
-        return None
-    return (pts[-1]["close"] - p0) / p0 * 100.0
+    if not pts:
+        return None, 0.0, "no_history"
+    d0, dl, de = _parse_date(made), _parse_date(pts[-1]["date"]), _parse_date(end_str)
+    if not d0 or not dl or not de:
+        return None, 0.0, "bad_date"
+    horizon_days = max(1, (de - d0).days)
+    frac = max(0.0, min(1.0, (dl - d0).days / horizon_days))
+    pct = (float(pts[-1]["close"]) - float(p0)) / float(p0) * 100.0
+    return pct, frac, None
 
 
 def build_training_rows(predictions_log: dict, sim_trades: list, load_hist_fn, today_str: str,
                          order_usd: float) -> list:
-    """(features, kind, action, reward) のタプルのリストを作る。
+    """(features, kind, action, reward, made_date, weight) のタプルのリストを作る。
 
-    - sim_trades: simulation.json の _trades_raw(実際の売買履歴)
-    - load_hist_fn: symbol -> [{"date":..., "close":...}, ...] を返す関数
+    1件の予想ログにつき、全5行動分の行を作る(フルインフォメーション学習)。
+    sim_trades は互換性のために引数として残しているが、報酬の一貫性のため使わない
+    (実売買の実現損益は予想との対応が曖昧で、行動ごとに意味が変わってしまうため)。
     """
-    # symbol+kind ごとに、時系列順の「売り」トレード(実現損益つき)を集める
-    sells_by_key: dict = {}
-    for t in sim_trades or []:
-        if t.get("side") != "sell" or t.get("realized_pl") is None:
-            continue
-        key = (t.get("symbol"), t.get("kind"))
-        sells_by_key.setdefault(key, []).append(t)
-    for lst in sells_by_key.values():
-        lst.sort(key=lambda t: t.get("time") or "")
+    global LAST_BUILD_STATS
+    stats = {
+        "entries_total": 0, "entries_used": 0, "rows": 0,
+        "complete_labels": 0, "provisional_labels": 0, "padded_features": 0,
+        "skipped": {},
+    }
+
+    def skip(reason):
+        stats["skipped"][reason] = stats["skipped"].get(reason, 0) + 1
 
     rows = []
     entries = (predictions_log or {}).get("entries", [])
     for e in entries:
-        feats = e.get("features")
-        sym = e.get("symbol")
-        kind = e.get("kind")
-        category = e.get("category")
-        made = e.get("made_date")
-        if not feats or not sym or not kind or not category or not made:
+        stats["entries_total"] += 1
+        sym, kind, category, made = e.get("symbol"), e.get("kind"), e.get("category"), e.get("made_date")
+        if not sym or not kind or not made:
+            skip("missing_fields")
             continue
 
-        reward = None
-        # ① 実際にこの銘柄・この予想種別で「売り」が成立していれば、
-        #    made_date以降で最初に来た売りトレードの実現損益を報酬に使う
-        for t in sells_by_key.get((sym, kind), []):
-            t_time = (t.get("time") or "")[:10]
-            if t_time >= made:
-                reward = float(t.get("realized_pl") or 0.0)
-                break
+        feats, fstate = _normalize_feats(e.get("features"))
+        if feats is None:
+            skip(fstate)
+            continue
 
-        # ② 実売買がなければ、価格データから紙上の概算損益で代用する
-        if reward is None:
-            hist = load_hist_fn(sym)
-            pct_chg = _actual_pct_change(e, hist, today_str)
-            if pct_chg is None:
-                continue  # まだ判定期間が終わっていない
-            reward = _paper_reward(category, pct_chg, order_usd)
+        pct, frac, reason = _actual_return(e, load_hist_fn(sym), today_str)
+        if reason:
+            skip(reason)
+            continue
 
-        rows.append((feats, kind, category, reward, made))
+        end_str = e.get("horizon_end") or ""
+        if end_str <= today_str and frac >= COMPLETE_FRAC:
+            weight, label = 1.0, "complete"
+        elif frac >= MIN_PROVISIONAL_FRAC:
+            weight, label = PROVISIONAL_WEIGHT * frac, "provisional"
+        else:
+            skip("too_early" if end_str > today_str else "history_short")
+            continue
+
+        for cat in CATEGORY_ORDER:
+            rows.append((feats, kind, cat, _paper_reward(cat, pct, order_usd), made, weight))
+
+        stats["entries_used"] += 1
+        stats["complete_labels" if label == "complete" else "provisional_labels"] += 1
+        if fstate == "padded":
+            stats["padded_features"] += 1
+
+    stats["rows"] = len(rows)
+    LAST_BUILD_STATS = stats
     return rows
 
 
 def _recency_weight(made_date: str, today_str: str, halflife_days: float) -> float:
     """予想が行われた日(made_date)が新しいほど大きい重みを返す(指数減衰)。
     パース失敗時は中立(1.0)を返す。"""
-    try:
-        d0 = datetime.strptime(made_date, "%Y-%m-%d")
-        d1 = datetime.strptime(today_str, "%Y-%m-%d")
-        age_days = max(0.0, (d1 - d0).days)
-    except Exception:
+    d0, d1 = _parse_date(made_date), _parse_date(today_str)
+    if not d0 or not d1 or halflife_days <= 0:
         return 1.0
-    if halflife_days <= 0:
-        return 1.0
+    age_days = max(0.0, (d1 - d0).days)
     return math.pow(0.5, age_days / halflife_days)
+
+
+def _new_forest():
+    return RandomForestRegressor(n_estimators=80, max_depth=6, min_samples_leaf=3,
+                                  random_state=42, n_jobs=-1)
 
 
 class RewardModel:
     """kind("day"/"long") ごと・行動(カテゴリ)ごとに独立した期待報酬の回帰モデル。
 
-    単純にサンプル数が min_samples を超えたら無条件にモデルを信じるのではなく、
-    データを時系列で学習/検証に分割し、「何も学習していないベースライン
-    (=直近報酬の平均値で常に予測する)」との比較(MAE)を行う。ベースラインに
-    負けているカテゴリは validated=False としてマークし、choose_action 側で
-    活用(greedy)には使わず探索(explore)のみに回す(過学習ノイズを実運用の
-    判断に使わないようにするため)。
+    時系列(日付単位)で学習/検証に分割し、「何も学習していないベースライン
+    (=訓練期間の平均報酬で常に予測する)」とのMAE比較と符号一致率で検証する。
+    合格しない行動は validated=False/beats_baseline=False となり、
+    choose_action の活用(greedy)には使われず探索(explore)のみに回る。
     """
 
     def __init__(self):
         self.models: dict = {}  # (kind, category) -> RandomForestRegressor
         self.sample_counts: dict = {}  # (kind, category) -> int
-        self.metrics: dict = {}  # (kind, category) -> {"validated","n_val","mae_model","mae_baseline","hit_rate"}
+        self.metrics: dict = {}  # (kind, category) -> {...}
         self.trained_at: str | None = None
 
     def fit(self, rows: list, min_samples: int, today_str: str | None = None,
@@ -207,48 +283,48 @@ class RewardModel:
         today_str = today_str or datetime.utcnow().strftime("%Y-%m-%d")
 
         by_key: dict = {}
-        for feats, kind, category, reward, made in rows:
-            by_key.setdefault((kind, category), []).append((feats, reward, made or today_str))
+        for row in rows:
+            feats, kind, category, reward, made = row[:5]
+            label_w = row[5] if len(row) > 5 else 1.0
+            by_key.setdefault((kind, category), []).append((feats, reward, made or today_str, label_w))
 
         self.models = {}
         self.sample_counts = {}
         self.metrics = {}
+
+        def weights(samples):
+            return np.array([_recency_weight(s[2], today_str, recency_halflife_days) * s[3] for s in samples],
+                            dtype=float)
 
         for key, samples in by_key.items():
             self.sample_counts[key] = len(samples)
             if len(samples) < min_samples:
                 continue
 
-            # 時系列順に並べる(made日付の古い順)。ホールドアウト検証は
-            # 「未来のデータで過去のモデルを試す」形にするため、末尾側
-            # (=直近)を検証用に切り出す。
             samples_sorted = sorted(samples, key=lambda s: s[2])
-            n = len(samples_sorted)
-            n_val = max(0, int(round(n * val_frac)))
-            # 検証セットが小さすぎる(5件未満)場合は検証をスキップし、
-            # 「未検証」として扱う(判断材料不足であって不合格ではない)。
-            if n_val >= 5 and (n - n_val) >= min_samples:
-                train_s = samples_sorted[:n - n_val]
-                val_s = samples_sorted[n - n_val:]
 
+            # 日付単位で分割する(同日の銘柄は相場環境が共通なので、学習側と
+            # 検証側にまたがらせない)。検証は直近の日付、かつ確定ラベルのみ。
+            dates = sorted({s[2] for s in samples_sorted})
+            val_dates = set(dates[-max(1, int(round(len(dates) * val_frac))):]) if len(dates) >= 4 else set()
+            train_s = [s for s in samples_sorted if s[2] not in val_dates]
+            val_s = [s for s in samples_sorted if s[2] in val_dates and s[3] >= 0.999]
+
+            if val_dates and len(val_s) >= 5 and len(train_s) >= min_samples:
                 X_tr = np.array([s[0] for s in train_s], dtype=float)
                 y_tr = np.array([s[1] for s in train_s], dtype=float)
-                w_tr = np.array([_recency_weight(s[2], today_str, recency_halflife_days) for s in train_s],
-                                 dtype=float)
-
-                val_model = RandomForestRegressor(n_estimators=80, max_depth=6, min_samples_leaf=3,
-                                                    random_state=42, n_jobs=-1)
-                val_model.fit(X_tr, y_tr, sample_weight=w_tr)
+                val_model = _new_forest()
+                val_model.fit(X_tr, y_tr, sample_weight=weights(train_s))
 
                 X_val = np.array([s[0] for s in val_s], dtype=float)
                 y_val = np.array([s[1] for s in val_s], dtype=float)
                 pred_val = val_model.predict(X_val)
 
-                baseline_pred = float(np.mean(y_tr))  # 「何も学習しない」場合の予測(訓練期間の平均報酬)
+                baseline_pred = float(np.mean(y_tr))
                 mae_model = float(np.mean(np.abs(pred_val - y_val)))
                 mae_baseline = float(np.mean(np.abs(baseline_pred - y_val)))
-                # 符号(儲かる方向を当てたか)の一致率。実運用上の意味が分かりやすい補助指標。
-                hit_rate = float(np.mean(np.sign(pred_val) == np.sign(y_val))) if len(y_val) else None
+                hit_rate = float(np.mean(np.sign(pred_val) == np.sign(y_val)))
+                beats = (mae_model < mae_baseline) and (hit_rate >= 0.5)
 
                 self.metrics[key] = {
                     "validated": True,
@@ -256,22 +332,19 @@ class RewardModel:
                     "n_val": len(val_s),
                     "mae_model": round(mae_model, 4),
                     "mae_baseline": round(mae_baseline, 4),
-                    "beats_baseline": mae_model < mae_baseline,
-                    "hit_rate": round(hit_rate, 4) if hit_rate is not None else None,
+                    "beats_baseline": bool(beats),
+                    "hit_rate": round(hit_rate, 4),
                 }
             else:
-                self.metrics[key] = {"validated": False, "n_train": n, "n_val": n_val}
+                self.metrics[key] = {"validated": False, "n_train": len(samples_sorted),
+                                     "n_val": len(val_s), "n_dates": len(dates)}
 
-            # 本番用モデルは全データ(検証データも含む)で、直近ほど重く
-            # 学習する(sample_weight)。検証はあくまで「信頼できるか」の
-            # 判定用であり、判定後は全データを使い切る。
+            # 本番用モデルは全データ(検証データも含む)で、直近ほど・確定ラベルほど
+            # 重く学習する。検証は「信頼できるか」の判定専用。
             X_all = np.array([s[0] for s in samples_sorted], dtype=float)
             y_all = np.array([s[1] for s in samples_sorted], dtype=float)
-            w_all = np.array([_recency_weight(s[2], today_str, recency_halflife_days) for s in samples_sorted],
-                              dtype=float)
-            model = RandomForestRegressor(n_estimators=80, max_depth=6, min_samples_leaf=3,
-                                           random_state=42, n_jobs=-1)
-            model.fit(X_all, y_all, sample_weight=w_all)
+            model = _new_forest()
+            model.fit(X_all, y_all, sample_weight=weights(samples_sorted))
             self.models[key] = model
 
         self.trained_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -280,18 +353,15 @@ class RewardModel:
         """行動(カテゴリ)ごとの期待報酬を予測する。学習済みモデルがない
         カテゴリは None(=判断材料なし)を返す。"""
         out = {}
+        x = np.array([feats], dtype=float)
         for category in CATEGORY_ORDER:
             model = self.models.get((kind, category))
-            if model is None:
-                out[category] = None
-                continue
-            out[category] = float(model.predict(np.array([feats], dtype=float))[0])
+            out[category] = None if model is None else float(model.predict(x)[0])
         return out
 
     def is_validated_and_better(self, kind: str, category: str) -> bool:
-        """このカテゴリのモデルが、検証の結果「何も学習しないベースライン」
-        より明確に優れていると確認できているか。検証データ不足でまだ
-        判定できていない場合は False (=慎重側)を返す。"""
+        """このカテゴリのモデルが、検証で「何も学習しないベースライン」より
+        明確に優れていると確認できているか。未検証なら False(慎重側)。"""
         m = self.metrics.get((kind, category))
         return bool(m and m.get("validated") and m.get("beats_baseline"))
 
@@ -331,6 +401,12 @@ def choose_action(model: RewardModel | None, kind: str, feats: list, fallback_ca
     if model is None or not SKLEARN_AVAILABLE:
         return fallback_category, meta
 
+    # 特徴量の次元が現行と違う場合は推論しない(モデル不整合の保険)
+    feats, fstate = _normalize_feats(feats)
+    if feats is None:
+        meta["reason"] = fstate
+        return fallback_category, meta
+
     expected = model.predict_rewards(kind, feats)
     meta["expected_rewards"] = expected
     usable = {c: r for c, r in expected.items() if r is not None}
@@ -338,25 +414,26 @@ def choose_action(model: RewardModel | None, kind: str, feats: list, fallback_ca
         return fallback_category, meta
 
     if rng.random() < epsilon:
-        # 探索: 学習済みの行動の中からランダムに選ぶ(データの薄い行動にも
-        # あえて予想を出させて、次回以降の学習データを増やす)。ここでは
-        # 検証未通過のモデルも対象に含めてよい(探索の目的はデータ収集)。
         category = rng.choice(list(usable.keys()))
         meta["source"] = "explore"
         meta["explored"] = True
         return category, meta
 
-    # 活用(greedy): 「ホールドアウト検証で、何も学習しないベースラインより
-    # 明確に優れている」と確認できた行動の中からのみ選ぶ。検証データが
-    # 足りずまだ判定できていない/ベースラインに負けているモデルは、実運用の
-    # 判断に使うと過学習ノイズをそのまま予想に反映してしまうため除外する。
     trustworthy = {c: r for c, r in usable.items() if model.is_validated_and_better(kind, c)}
     if not trustworthy:
-        meta["source"] = "rule_fallback"
         meta["reason"] = "no_validated_action_beats_baseline"
         return fallback_category, meta
 
-    category = max(trustworthy.items(), key=lambda kv: kv[1])[0]
+    best_cat, best_reward = max(trustworthy.items(), key=lambda kv: kv[1])
+    if best_reward <= 0.0:
+        # 検証合格の行動がどれも損失見込み → ノーポジション(変動なし)を選ぶ。
+        # 旧挙動(ルール予想に戻す)にしたい場合は、次の行を
+        #   return fallback_category, meta
+        # に置き換える。
+        meta["source"] = "model_abstain"
+        meta["reason"] = "best_expected_reward_not_positive"
+        return "変動なし", meta
+
     meta["source"] = "model"
     meta["trustworthy_actions"] = list(trustworthy.keys())
-    return category, meta
+    return best_cat, meta

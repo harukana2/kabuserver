@@ -2915,10 +2915,15 @@ def update_ml_learning_state(run_dt: datetime) -> None:
             # beats_baseline=trueの行動だけが実運用の活用(greedy)判断に使われる。
             "metrics": metrics,
             "usage_this_run": dict(_RL_USAGE_COUNTS),
+            # 学習データに使えたログ/使えなかった理由別の件数(原因調査用)
+            "build_stats": dict(getattr(rl, "LAST_BUILD_STATS", {}) or {}),
         })
         print(f"[info] rl_model更新: 学習サンプル{len(rows)}件 / "
               f"学習済み行動{trained_actions}/10(day5+long5) / "
               f"検証合格(ベースライン超え)行動{validated_actions}/10 / "
+              f"ログ{(getattr(rl, 'LAST_BUILD_STATS', {}) or {}).get('entries_used', 0)}/"
+              f"{(getattr(rl, 'LAST_BUILD_STATS', {}) or {}).get('entries_total', 0)}件を学習に使用 "
+              f"(使えなかった理由: {(getattr(rl, 'LAST_BUILD_STATS', {}) or {}).get('skipped', {})}) / "
               f"今回の予想内訳 model={_RL_USAGE_COUNTS.get('model',0)} "
               f"explore={_RL_USAGE_COUNTS.get('explore',0)} "
               f"rule_fallback={_RL_USAGE_COUNTS.get('rule_fallback',0)}")
