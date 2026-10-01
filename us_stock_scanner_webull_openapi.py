@@ -270,6 +270,35 @@ def _to_float(v):
         return None
 
 
+def _finite_float(v):
+    """数値化できて有限(NaN/inf でない)ならfloat、それ以外はNone。
+    yfinanceのinfoは赤字銘柄のPERなどで "Infinity" や "N/A" といった
+    **文字列**を返すことがあり、そのまま比較すると TypeError になるため。"""
+    try:
+        if v is None or isinstance(v, bool):
+            return None
+        f = float(v)
+        return f if math.isfinite(f) else None
+    except (TypeError, ValueError):
+        return None
+
+
+_FUND_NUMERIC_KEYS = (
+    "target_mean", "market_cap", "per", "pbr", "total_cash", "total_debt",
+    "net_cash_ratio", "news_sentiment_score", "news_volume_7d", "news_sentiment_conf",
+)
+
+
+def _sanitize_fund(d: dict) -> dict:
+    """ファンダメンタルズ辞書の数値項目を有限なfloat/Noneに正規化する
+    (キャッシュに過去の実行で保存された文字列値が残っていても安全にする)。"""
+    out = dict(d)
+    for k in _FUND_NUMERIC_KEYS:
+        if k in out:
+            out[k] = _finite_float(out[k])
+    return out
+
+
 def _pick(d: dict, *keys):
     """
     dictから、複数の候補キー名のうち最初に見つかった「意味のある値」を返す。
@@ -1253,22 +1282,37 @@ def _earnings_from_info(info: dict) -> str | None:
 def _fetch_fundamentals_uncached(symbol: str, skip_earnings_lookup: bool) -> dict:
     result = dict(EMPTY_FUNDAMENTALS)
     info = {}
-    try:
-        tk = yf.Ticker(symbol)
-        info = tk.info or {}
-    except Exception as e:
-        print(f"[warn] yfinance info fetch failed for {symbol}: {e}")
+    tk = None
+    last_err = None
+    for attempt in range(3):
+        try:
+            tk = yf.Ticker(symbol)
+            info = tk.info or {}
+            last_err = None
+            break
+        except Exception as e:
+            last_err = e
+            msg = str(e)
+            if "Too Many Requests" in msg or "Rate limited" in msg or "429" in msg:
+                time.sleep(1.5 * (attempt + 1) + random.random())  # レート制限は間隔を空けて再試行
+                continue
+            break
+    if last_err is not None:
+        print(f"[warn] yfinance info fetch failed for {symbol}: {last_err}")
         tk = None
+        # 取得失敗は呼び出し側でキャッシュしないための目印
+        result["_failed"] = True
 
-    result["target_mean"] = info.get("targetMeanPrice")
-    result["market_cap"] = info.get("marketCap")
+    result["target_mean"] = _finite_float(info.get("targetMeanPrice"))
+    result["market_cap"] = _finite_float(info.get("marketCap"))
     result["recommendation"] = info.get("recommendationKey")
     result["sector"] = info.get("sector")
     # PERはtrailing優先、無ければforward。PBRはpriceToBook。
-    result["per"] = info.get("trailingPE") or info.get("forwardPE")
-    result["pbr"] = info.get("priceToBook")
-    result["total_cash"] = info.get("totalCash")
-    result["total_debt"] = info.get("totalDebt")
+    # 赤字銘柄などで "Infinity" 等の文字列が返るため有限な数値のみ採用する。
+    result["per"] = _finite_float(info.get("trailingPE")) or _finite_float(info.get("forwardPE"))
+    result["pbr"] = _finite_float(info.get("priceToBook"))
+    result["total_cash"] = _finite_float(info.get("totalCash"))
+    result["total_debt"] = _finite_float(info.get("totalDebt"))
 
     # ネットキャッシュ比率 = (現金 - 有利子負債) / 時価総額
     if result["total_cash"] is not None and result["market_cap"]:
@@ -1337,7 +1381,7 @@ def fetch_fundamentals(symbol: str, force: bool = False) -> dict:
     if entry and not force:
         age_h = (now - (entry.get("fetched_at") or 0)) / 3600
         if age_h < FUNDAMENTALS_CACHE_TTL_HOURS:
-            return {k: entry.get("data", {}).get(k) for k in EMPTY_FUNDAMENTALS}
+            return _sanitize_fund({k: entry.get("data", {}).get(k) for k in EMPTY_FUNDAMENTALS})
 
     skip_earnings = False
     if entry and entry.get("no_earnings_at"):
@@ -1346,6 +1390,15 @@ def fetch_fundamentals(symbol: str, force: bool = False) -> dict:
 
     data = _fetch_fundamentals_uncached(symbol, skip_earnings)
 
+    if data.pop("_failed", False):
+        # 取得失敗(レート制限など)の空データを12時間キャッシュしてしまうと、
+        # その間ずっとPER・目標株価などが欠けたままになる。キャッシュは更新せず、
+        # 古い(期限切れの)キャッシュがあればそれで代用し、無ければ空のまま返す。
+        if entry and entry.get("data"):
+            return _sanitize_fund({k: entry["data"].get(k) for k in EMPTY_FUNDAMENTALS})
+        return _sanitize_fund(data)
+
+    data = _sanitize_fund(data)
     new_entry = {"fetched_at": now, "data": data}
     if data.get("next_earnings") is None:
         # 決算日が取れなかったことを記録(次回以降しばらくは問い合わせない)
@@ -1424,10 +1477,10 @@ def score_long_term(row: dict, fund: dict) -> tuple[float, float]:
     above200 = row.get("above_sma200")
     rsi14 = row.get("rsi14") or 50
     price = row.get("price") or 0
-    target = fund.get("target_mean")
-    per = fund.get("per")
-    pbr = fund.get("pbr")
-    net_cash_ratio = fund.get("net_cash_ratio")
+    target = _finite_float(fund.get("target_mean"))
+    per = _finite_float(fund.get("per"))
+    pbr = _finite_float(fund.get("pbr"))
+    net_cash_ratio = _finite_float(fund.get("net_cash_ratio"))
 
     upside_pct = None
     if target and price:
@@ -1456,7 +1509,7 @@ def score_long_term(row: dict, fund: dict) -> tuple[float, float]:
     risk = 0
     risk += 25 if (above200 is False) else 5
     risk += abs(rsi14 - 50) / 50 * 30
-    mc = fund.get("market_cap")
+    mc = _finite_float(fund.get("market_cap"))
     if mc:
         if mc < 2_000_000_000:
             risk += 30
