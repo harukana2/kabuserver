@@ -69,6 +69,21 @@ MIN_PROVISIONAL_FRAC = 0.4
 # 暫定ラベルの基本重み(実際の重み = PROVISIONAL_WEIGHT * 経過割合)
 PROVISIONAL_WEIGHT = 0.5
 
+# 【安定志向】買い(値上がり系)で損した場合の損失を何倍に数えるか。
+# 1.0超にすると「儲かる/損するが五分五分」の行動より「見送り」が選ばれやすくなり、
+# 一発狙いの過熱銘柄の追っかけ買いが学習で抑えられる。
+LOSS_AVERSION = 1.5
+# 「変動なし(見送り)」で実際に動いた分を機会損失として減点する係数
+ABSTAIN_OPP_COST = 0.1
+# 活用(greedy)時に「買う/売る」を選ぶのに必要な最低期待報酬($)。これ以下は見送り。
+MIN_EDGE_USD = 0.02
+# 検証でモデルが「買う/売る」と判断した件のうち、最低これだけの件数が無いと信用しない
+MIN_PICKS_FOR_TRUST = 5
+# 検証データの最低件数(日付をまたいだ確定ラベル)
+MIN_VAL_SAMPLES = 15
+# 検証期間の直前、この日数分は学習に使わない(判定期限が検証期間に食い込む漏れの防止)
+EMBARGO_DAYS = 2
+
 # 直近の build_training_rows の集計(使えた/使えなかった理由別の件数)。
 # 本体スクリプトが rl_status.json に書き出して原因調査に使う。
 LAST_BUILD_STATS: dict = {}
@@ -142,16 +157,18 @@ def _normalize_feats(feats):
 def _paper_reward(category: str, pct_chg: float, order_usd: float) -> float:
     """行動(カテゴリ)を取った場合の概算損益($)。全行動で同一の定義。
 
-    - 値上がり系: order_usd × サイズ倍率 × 騰落率(買った場合の損益)
-    - 値下がり系: 下がると予想して避けた/空売りした価値として符号を反転
+    - 値上がり系: order_usd × サイズ倍率 × 騰落率(買った場合の損益)。損失はLOSS_AVERSION倍
+    - 値下がり系: 下がると予想して避けた/空売りした価値として符号を反転(損失は同じく加重)
     - 変動なし  : ノーポジション。実際に動いた分だけ機会損失として小さく減点
     """
     mult = SIZE_MULT.get(category, 1.0)
     if "値上がり" in category:
-        return order_usd * mult * (pct_chg / 100.0)
+        pnl = order_usd * mult * (pct_chg / 100.0)
+        return pnl * LOSS_AVERSION if pnl < 0 else pnl
     if "値下がり" in category:
-        return order_usd * mult * (-pct_chg / 100.0)
-    return -order_usd * (abs(pct_chg) / 100.0) * 0.3
+        pnl = order_usd * mult * (-pct_chg / 100.0)
+        return pnl * LOSS_AVERSION if pnl < 0 else pnl
+    return -order_usd * (abs(pct_chg) / 100.0) * ABSTAIN_OPP_COST
 
 
 def _parse_date(s):
@@ -303,14 +320,29 @@ class RewardModel:
 
             samples_sorted = sorted(samples, key=lambda s: s[2])
 
-            # 日付単位で分割する(同日の銘柄は相場環境が共通なので、学習側と
-            # 検証側にまたがらせない)。検証は直近の日付、かつ確定ラベルのみ。
+            # 日付単位の時系列分割。
+            # 旧版は「直近の日付」を検証に回していたが、直近は判定期限前の暫定ラベルばかりで
+            # 確定ラベルが0件 → 検証が一度も走らず全行動が未検証(=モデルが一度も使われない)
+            # になっていた。今回は「確定ラベルがある日付」の直近を検証に使い、
+            # それより前(+禁止期間EMBARGO_DAYS)だけで学習する。
             dates = sorted({s[2] for s in samples_sorted})
-            val_dates = set(dates[-max(1, int(round(len(dates) * val_frac))):]) if len(dates) >= 4 else set()
-            train_s = [s for s in samples_sorted if s[2] not in val_dates]
-            val_s = [s for s in samples_sorted if s[2] in val_dates and s[3] >= 0.999]
+            complete_dates = sorted({s[2] for s in samples_sorted if s[3] >= 0.999})
+            val_dates = set()
+            cutoff_dt = None
+            if len(complete_dates) >= 4:
+                n_vd = max(1, int(round(len(complete_dates) * val_frac)))
+                val_dates = set(complete_dates[-n_vd:])
+                cutoff_dt = _parse_date(min(val_dates))
+            train_s, val_s = [], []
+            for smp in samples_sorted:
+                d = _parse_date(smp[2])
+                if cutoff_dt is not None and d is not None:
+                    if smp[2] in val_dates and smp[3] >= 0.999:
+                        val_s.append(smp)
+                    elif (cutoff_dt - d).days > EMBARGO_DAYS:
+                        train_s.append(smp)
 
-            if val_dates and len(val_s) >= 5 and len(train_s) >= min_samples:
+            if val_dates and len(val_s) >= MIN_VAL_SAMPLES and len(train_s) >= min_samples:
                 X_tr = np.array([s[0] for s in train_s], dtype=float)
                 y_tr = np.array([s[1] for s in train_s], dtype=float)
                 val_model = _new_forest()
@@ -324,20 +356,34 @@ class RewardModel:
                 mae_model = float(np.mean(np.abs(pred_val - y_val)))
                 mae_baseline = float(np.mean(np.abs(baseline_pred - y_val)))
                 hit_rate = float(np.mean(np.sign(pred_val) == np.sign(y_val)))
+
+                # 実運用と同じ使い方での成績: モデルが「期待報酬 > MIN_EDGE_USD」と
+                # 判断した件を実際に取った場合の平均損益($)。これがプラスでなければ信用しない。
+                picked = pred_val > MIN_EDGE_USD
+                pick_n = int(picked.sum())
+                pick_avg = float(np.mean(y_val[picked])) if pick_n else 0.0
+
                 beats = (mae_model < mae_baseline) and (hit_rate >= 0.5)
+                if category != "変動なし":
+                    beats = beats and pick_n >= MIN_PICKS_FOR_TRUST and pick_avg > 0.0
 
                 self.metrics[key] = {
                     "validated": True,
                     "n_train": len(train_s),
                     "n_val": len(val_s),
+                    "n_dates": len(dates),
                     "mae_model": round(mae_model, 4),
                     "mae_baseline": round(mae_baseline, 4),
                     "beats_baseline": bool(beats),
                     "hit_rate": round(hit_rate, 4),
+                    "pick_n": pick_n,
+                    "pick_avg_reward": round(pick_avg, 4),
                 }
             else:
                 self.metrics[key] = {"validated": False, "n_train": len(samples_sorted),
-                                     "n_val": len(val_s), "n_dates": len(dates)}
+                                     "n_val": len(val_s), "n_dates": len(dates),
+                                     "n_complete_dates": len(complete_dates),
+                                     "n_train_after_embargo": len(train_s)}
 
             # 本番用モデルは全データ(検証データも含む)で、直近ほど・確定ラベルほど
             # 重く学習する。検証は「信頼できるか」の判定専用。
@@ -425,13 +471,13 @@ def choose_action(model: RewardModel | None, kind: str, feats: list, fallback_ca
         return fallback_category, meta
 
     best_cat, best_reward = max(trustworthy.items(), key=lambda kv: kv[1])
-    if best_reward <= 0.0:
+    if best_reward <= MIN_EDGE_USD:
         # 検証合格の行動がどれも損失見込み → ノーポジション(変動なし)を選ぶ。
         # 旧挙動(ルール予想に戻す)にしたい場合は、次の行を
         #   return fallback_category, meta
         # に置き換える。
         meta["source"] = "model_abstain"
-        meta["reason"] = "best_expected_reward_not_positive"
+        meta["reason"] = "best_expected_reward_below_min_edge"
         return "変動なし", meta
 
     meta["source"] = "model"
