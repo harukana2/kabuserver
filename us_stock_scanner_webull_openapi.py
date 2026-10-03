@@ -1637,6 +1637,117 @@ def prediction_pattern_key(row: dict, kind: str) -> str:
     return f"{kind}|net{net_c}|rsi_{_rsi_zone(rsi14)}|atr_{_atr_zone(atrp)}|tr_{tz}"
 
 
+# --------------------------------------------------------------------------
+# 安全弁: 過熱銘柄は買わない / 安定銘柄 or 底値圏の反転だけを買い候補にする
+# --------------------------------------------------------------------------
+OVERHEAT_RSI = 70.0        # RSIがこれ以上は過熱
+OVERHEAT_MOM_1M = 25.0     # 1ヶ月で+25%以上上げていたら過熱
+OVERHEAT_DAY_CHG = 8.0     # 前日比+8%以上の急騰は過熱(飛びつかない)
+DIP_RSI_MAX = 40.0         # 押し目/底値圏とみなすRSIの上限
+DIP_BB_MAX = 0.25          # ボリンジャーバンド位置(0=下限)がこれ以下でも底値圏とみなす
+
+
+def _fnum(v):
+    """数値化(None/NaN/変換不可は None)。"""
+    try:
+        if v is None:
+            return None
+        f = float(v)
+        return None if math.isnan(f) else f
+    except Exception:
+        return None
+
+
+def _truthy(v) -> bool:
+    try:
+        return (v is not None) and (not _isnan(v)) and bool(v)
+    except Exception:
+        return False
+
+
+def is_overheated(row: dict) -> bool:
+    """短期的に上がりすぎ(過熱)の銘柄か。追っかけ買いすると高値づかみになりやすい。"""
+    rsi14 = _fnum(row.get("rsi14"))
+    mom1 = _fnum(row.get("mom_1m"))
+    dchg = _fnum(row.get("day_change_pct"))
+    bb = _fnum(row.get("bb_pos"))
+    if rsi14 is not None and rsi14 >= OVERHEAT_RSI:
+        return True
+    if mom1 is not None and mom1 >= OVERHEAT_MOM_1M:
+        return True
+    if dchg is not None and dchg >= OVERHEAT_DAY_CHG:
+        return True
+    if bb is not None and bb >= 1.0 and mom1 is not None and mom1 >= 15.0:
+        return True
+    return False
+
+
+def is_stable_name(row: dict) -> bool:
+    """S&P500構成銘柄、または時価総額が十分大きい銘柄。"""
+    if _truthy(row.get("is_sp500")):
+        return True
+    mc = _fnum(row.get("market_cap"))
+    return mc is not None and mc >= STABLE_MIN_MARKET_CAP
+
+
+def is_dip_setup(row: dict) -> bool:
+    """「加熱しておらず、底値圏で反転の兆しがある」銘柄か。
+    - 長期上昇トレンド(200日線の上)は維持している(落ちるナイフを避ける)
+    - RSIが低い or ボリンジャー下限付近まで押している
+    - 直近1ヶ月で急落しすぎていない(-15%より下は除外)
+    - 反転の兆し(MACD上向き転換 / 前日比プラス / 20日線回復)がある
+    - 売りの転換シグナル(MACD下向き転換)が出ていない
+    """
+    if is_overheated(row):
+        return False
+    if row.get("above_sma200") is not True:
+        return False
+    rsi14 = _fnum(row.get("rsi14"))
+    bb = _fnum(row.get("bb_pos"))
+    oversold = (rsi14 is not None and rsi14 <= DIP_RSI_MAX) or (bb is not None and bb <= DIP_BB_MAX)
+    if not oversold:
+        return False
+    mom1 = _fnum(row.get("mom_1m"))
+    if mom1 is not None and mom1 < -15.0:
+        return False
+    if _truthy(row.get("macd_bearish_cross")):
+        return False
+    dchg = _fnum(row.get("day_change_pct"))
+    turning = (_truthy(row.get("macd_bullish_cross"))
+               or (dchg is not None and dchg > 0)
+               or row.get("above_sma20") is True)
+    return bool(turning)
+
+
+def buy_gate(row: dict) -> tuple[bool, str]:
+    """買ってよい銘柄か。(OK?, 理由)。予想カテゴリの補正と仮想売買の両方で使う。"""
+    if is_overheated(row):
+        return False, "overheated"
+    atr = _fnum(row.get("atr_pct"))
+    if atr is not None and atr > SIM_MAX_ATR_PCT:
+        return False, "too_volatile"
+    if not (is_stable_name(row) or is_dip_setup(row)):
+        return False, "not_stable_nor_dip"
+    return True, "ok"
+
+
+_BULLISH_CATS = ("大きく値上がり", "少し値上がり")
+
+
+def _apply_safety_guards(row: dict, category: str) -> str:
+    """強気予想(買いシグナル)に安全弁をかける。
+    ゲートを通らない強気予想は「変動なし」(見送り)に落とす。
+    押し目(底値圏の反転)での強気は、確信度を高く見せないよう「少し値上がり」止まり。"""
+    if category not in _BULLISH_CATS:
+        return category
+    ok, _ = buy_gate(row)
+    if not ok:
+        return "変動なし"
+    if is_dip_setup(row) and not is_stable_name(row):
+        return "少し値上がり"
+    return category
+
+
 _LEARNING_CACHE: dict | None = None
 
 
@@ -1738,10 +1849,19 @@ def predict_category(row: dict, kind: str) -> str:
     if flat_zone and category in ("少し値上がり", "少し値下がり"):
         category = "変動なし"
 
+    # 【底値圏の押し目買い】旧ルールは「トレンド上+モメンタム強」ばかりを強気にするため、
+    # 売られすぎから反転しそうな銘柄は永遠に「値下がり/変動なし」扱いだった。
+    # 加熱しておらず200日線の上で押している+反転の兆しがある銘柄は「少し値上がり」にする。
+    if category in ("変動なし", "少し値下がり") and is_dip_setup(row) and (
+            is_stable_name(row) or (_fnum(row.get("atr_pct")) or 0) <= SIM_MAX_ATR_PCT):
+        category = "少し値上がり"
+
     # 旧来のルールベース学習: 同じ型のパターンでこれまで的中率が低ければ弱め、
     # 高ければ強める(強化学習モデルが未成熟な間のフォールバック/事前分布として使う)
     pattern_key = prediction_pattern_key(row, kind)
     rule_category = _apply_learning_adjustment(category, kind, pattern_key, load_learning_weights())
+    # 過熱銘柄の追っかけ買い・不安定な銘柄の買いシグナルをここで落とす
+    rule_category = _apply_safety_guards(row, rule_category)
 
     # 強化学習(文脈的バンディット): 特徴量から行動(カテゴリ)ごとの期待損益を
     # 予測し、最も期待値の高い行動を選ぶ(ε-greedyで一部は探索)。
@@ -1754,7 +1874,8 @@ def predict_category(row: dict, kind: str) -> str:
             epsilon=SIM_RL_EPSILON, min_samples=SIM_RL_MIN_SAMPLES, rng=_RL_RNG,
         )
         _RL_USAGE_COUNTS[meta["source"]] = _RL_USAGE_COUNTS.get(meta["source"], 0) + 1
-        return category_final
+        # 強化学習が強気を選んだ場合も、過熱・不安定銘柄なら見送りに落とす
+        return _apply_safety_guards(row, category_final)
 
     _RL_USAGE_COUNTS["rule_fallback"] += 1
     return rule_category
@@ -2025,6 +2146,7 @@ def run_scan():
         sym = row["symbol"]
         fund = fetch_fundamentals(sym)  # 先読み済みなのでキャッシュから即返る
         row_d = row.to_dict()
+        row_d = {**row_d, **{k: v for k, v in fund.items() if k == "market_cap"}}  # 安定銘柄判定用
         dt_opp, dt_risk = score_day_trade(row_d)
         lt_opp, lt_risk = score_long_term(row_d, fund)
         day_commentary = build_commentary(row_d, fund, "day")
@@ -2044,27 +2166,38 @@ def run_scan():
             "long_timing": long_commentary["timing"],
             "day_prediction": predict_category(row_d, "day"),
             "long_prediction": predict_category(row_d, "long"),
+            "overheated": is_overheated(row_d),
+            "dip_setup": is_dip_setup(row_d),
+            "stable_name": is_stable_name(row_d),
         })
 
     cand_df = pd.DataFrame(candidates)
 
+    # 過熱銘柄(RSI高・急騰直後など)は候補から外す。ATR/出来高/前日比が大きいほど高得点の
+    # day_opportunity だけで並べると、構造的に「加熱しきった銘柄」が上位を占めてしまうため。
+    calm_df = cand_df[~cand_df["overheated"]]
+    if len(calm_df) < DAY_TRADE_LIST_SIZE:  # 万一少なすぎる場合は過熱を含めて埋める
+        calm_df = cand_df
     day_trade_list = (
-        cand_df.sort_values("day_opportunity", ascending=False)
+        calm_df.sort_values("day_opportunity", ascending=False)
         .head(DAY_TRADE_LIST_SIZE)
         .to_dict("records")
     )
     long_term_list = (
-        cand_df.sort_values("long_opportunity", ascending=False)
+        calm_df.sort_values("long_opportunity", ascending=False)
         .head(LONG_TERM_LIST_SIZE)
         .to_dict("records")
     )
-    # 主要企業(S&P500)欄: 中長期スコア順。S&P500リストが取得できなかった場合は空になる
+    # 主要企業(S&P500)欄: 過熱していない銘柄の中長期スコア上位 + 底値圏の押し目候補。
+    # 押し目候補を混ぜるのは、(1)買い候補として表示するため (2)学習データにも
+    # 「安定銘柄が売られすぎから戻るか」の事例が貯まるようにするため。
     major_pool = cand_df[cand_df["is_sp500"]] if "is_sp500" in cand_df.columns else cand_df.iloc[0:0]
-    major_list = (
-        major_pool.sort_values("long_opportunity", ascending=False)
-        .head(MAJOR_LIST_SIZE)
-        .to_dict("records")
-    )
+    n_dip = min(5, MAJOR_LIST_SIZE)
+    dip_pool = major_pool[major_pool["dip_setup"]].sort_values("rsi14", ascending=True).head(n_dip)
+    base_pool = major_pool[~major_pool["overheated"]]
+    base_pool = base_pool[~base_pool["symbol"].isin(dip_pool["symbol"])]
+    base_top = base_pool.sort_values("long_opportunity", ascending=False).head(MAJOR_LIST_SIZE - len(dip_pool))
+    major_list = pd.concat([base_top, dip_pool]).to_dict("records")
 
     return day_trade_list, long_term_list, major_list, universe, len(cand_df), history
 
@@ -2554,7 +2687,13 @@ SIM_RESET_LEARNING_REQUESTED = os.environ.get("SIM_RESET_LEARNING", "").lower() 
 
 # 「弱気予想でも保持を選べる」ためのしきい値
 SIM_BEARISH_STREAK_TO_SELL = int(os.environ.get("SIM_BEARISH_STREAK_TO_SELL", "2") or 2)
-SIM_STOP_LOSS_PCT = float(os.environ.get("SIM_STOP_LOSS_PCT", "-20") or -20)  # 含み損率(%)。これを下回ったら強制損切り
+SIM_STOP_LOSS_PCT = float(os.environ.get("SIM_STOP_LOSS_PCT", "-10") or -10)  # 含み損率(%)。これを下回ったら(予想に関係なく)強制損切り
+
+# 【安定志向の購入ゲート】過熱銘柄の追っかけ買いを防ぎ、安定銘柄 or 底値圏の反転狙いだけ買う
+SIM_MAX_ATR_PCT = float(os.environ.get("SIM_MAX_ATR_PCT", "5") or 5)             # 1日の値幅(ATR%)がこれを超える銘柄は買わない
+SIM_MAX_PER_SYMBOL_USD = float(os.environ.get("SIM_MAX_PER_SYMBOL_USD", "20") or 20)  # 1銘柄への投入上限($)。買い増しの暴走防止
+SIM_MAX_NEW_BUYS_PER_RUN = int(os.environ.get("SIM_MAX_NEW_BUYS_PER_RUN", "3") or 3)   # 1回のスキャンで買う銘柄数の上限
+STABLE_MIN_MARKET_CAP = 10_000_000_000  # S&P500外でも時価総額$10B以上なら「安定銘柄」扱い
 
 # 日次の資産推移を残しておく上限(日数分。1日1エントリに集約するのでこれで十分長期間保持できる)
 MAX_EQUITY_POINTS_KEPT = 400
@@ -2570,7 +2709,11 @@ SIM_LEARN_PROMOTE_RATE = float(os.environ.get("SIM_LEARN_PROMOTE_RATE", "65") or
 # --------------------------------------------------------------------------
 RL_MODEL_PATH = os.path.join(DATA_DIR, "rl_model.pkl")
 RL_STATUS_PATH = os.path.join(DATA_DIR, "rl_status.json")
-SIM_RL_EPSILON = float(os.environ.get("SIM_RL_EPSILON", "0.15") or 0.15)  # 探索確率(0〜1)
+# 探索確率(0〜1)。既定は0。本モジュールは「実績の騰落率から全5行動の報酬を計算できる
+# フルインフォメーション学習」なので、ランダムに行動して試す必要がそもそも無い。
+# 以前の0.15だと予想の15%がランダムなカテゴリになり、それがそのまま仮想売買の
+# 買いになって損失とパターン学習のノイズを生んでいた。
+SIM_RL_EPSILON = float(os.environ.get("SIM_RL_EPSILON", "0") or 0)
 SIM_RL_MIN_SAMPLES = int(os.environ.get("SIM_RL_MIN_SAMPLES", "20") or 20)  # 行動ごとにこの件数未満は未学習扱い
 # 直近データを重視するための半減期(日)。過去のデータほど学習時の重みを
 # 指数的に小さくする(市場のレジーム変化に追従させるため)。
@@ -3001,7 +3144,31 @@ def _period_pl(equity_history: list[dict], run_dt: datetime, total_equity: float
     return {"pl": round(pl, 4), "pl_pct": round(pl_pct, 2) if pl_pct is not None else None, "ref_date": ref.get("date")}
 
 
-def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datetime) -> None:
+def _latest_price_for(sym: str, history: dict | None, pos: dict | None) -> float | None:
+    """今回のスキャン一覧に出てこない保有銘柄の最新価格を探す。
+    (1) スキャンで取得した日足 (2) 保存済みの日足履歴 (3) 前回までに記録した価格 の順。"""
+    try:
+        df = (history or {}).get(sym)
+        if df is not None and len(df) and "Close" in df:
+            v = _fnum(df["Close"].dropna().iloc[-1])
+            if v and v > 0:
+                return v
+    except Exception:
+        pass
+    try:
+        hist = _load_history_file(sym)
+        pts = [h for h in hist if h.get("date") and h.get("close") is not None]
+        if pts:
+            v = _fnum(max(pts, key=lambda h: h["date"])["close"])
+            if v and v > 0:
+                return v
+    except Exception:
+        pass
+    v = _fnum((pos or {}).get("last_price"))
+    return v if v and v > 0 else None
+
+
+def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datetime, history: dict | None = None) -> None:
     """
     予想に従って仮想的に売買するシミュレーションを1ステップ進め、
     data/simulation.json (現金残高・保有ポジション・取引履歴・収支・期間損益・
@@ -3039,13 +3206,50 @@ def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datet
         if not regular_hours:
             print("[info] simulation: 通常取引時間外です(1株未満になる端株取引のみスキップします)")
 
+        # 【バグ修正】保有中なのに今回の一覧(日次の候補リスト)から外れた銘柄は、
+        # 価格が取れず評価額が0円扱いになり、総資産が毎回「実際より大幅に減った」ように
+        # 見えていた(さらに損切り判定の対象にもならなかった)。最新価格を取得して
+        # 一覧に含め、評価・損切り判定の対象にする。
+        carried = 0
+        for sym, pos in positions.items():
+            if (pos.get("qty") or 0) > 1e-9 and sym not in by_symbol:
+                px = _latest_price_for(sym, history, pos)
+                if px:
+                    by_symbol[sym] = {"symbol": sym, "price": px, "_carried": True}
+                    carried += 1
+        if carried:
+            print(f"[info] simulation: 一覧外の保有{carried}銘柄を最新価格で評価します")
+
         held_no_cash_skips = 0
+        unsafe_buy_skips = 0
+        new_buys = 0
         for sym, r in by_symbol.items():
             price = r.get("price")
             if not price or price <= 0:
                 continue
             action, kind = _sim_signal(r)
             pos = positions.get(sym, {"qty": 0.0, "cost": 0.0, "bear_streak": 0})
+            if (pos.get("qty") or 0) > 1e-9:
+                pos["last_price"] = price
+
+            # 【無条件の損切り】弱気予想が出なくても、含み損が閾値を超えたら売る。
+            # (旧版は弱気予想の分岐の中でしか損切り判定をしておらず、予想が「強気/変動なし」の
+            #  まま下がり続けるポジションは放置されていた)
+            if (pos.get("qty") or 0) > 1e-9 and pos.get("cost"):
+                _mv = pos["qty"] * price
+                _pl_pct = (_mv - pos["cost"]) / pos["cost"] * 100
+                if _pl_pct <= SIM_STOP_LOSS_PCT and not (pos["qty"] < 1.0 and not regular_hours):
+                    trades.append({
+                        "time": ts, "symbol": sym, "side": "sell", "kind": kind or "day",
+                        "price": price, "qty": pos["qty"], "amount": _mv,
+                        "realized_pl": _mv - pos["cost"],
+                        "cash_after": round(cash + _mv, 4),
+                        "sell_reason": "stop_loss",
+                        "prediction": r.get("day_prediction") if (kind or "day") == "day" else r.get("long_prediction"),
+                    })
+                    cash += _mv
+                    positions[sym] = {"qty": 0.0, "cost": 0.0, "bear_streak": 0}
+                    continue
 
             if action is None:
                 # 中立予想: 弱気連続カウントはリセット(連続弱気のときだけカウントする)
@@ -3057,11 +3261,24 @@ def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datet
             if action == "buy":
                 if pos.get("qty", 0) > 1e-9:
                     pos["bear_streak"] = 0  # 強気シグナルが戻ったので弱気カウントをリセット
+                # 【購入ゲート】過熱・高ボラ・非安定(S&P500/大型株でも底値反転でもない)は買わない
+                ok_buy, why = buy_gate(r)
+                if not ok_buy:
+                    unsafe_buy_skips += 1
+                    positions[sym] = pos
+                    continue
+                if new_buys >= SIM_MAX_NEW_BUYS_PER_RUN:
+                    positions[sym] = pos
+                    continue  # 1回のスキャンで買う銘柄数の上限(一斉買いの防止)
+                room = SIM_MAX_PER_SYMBOL_USD - (pos.get("cost") or 0.0)
+                if room < 1.0:
+                    positions[sym] = pos
+                    continue  # 同一銘柄への買い増し上限
                 if cash < SIM_MIN_CASH_TO_TRADE:
                     held_no_cash_skips += 1
                     positions[sym] = pos
                     continue  # 現金不足: 稼いで現金を増やさない限り新規購入しない
-                order_amount = min(SIM_BUY_USD_PER_ORDER, cash)
+                order_amount = min(SIM_BUY_USD_PER_ORDER, cash, room)
                 qty = order_amount / price
                 is_fractional = qty < 1.0  # 端株になる場合のみ通常取引時間の制限対象
                 if is_fractional and not regular_hours:
@@ -3070,6 +3287,8 @@ def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datet
                 pos["qty"] = pos.get("qty", 0.0) + qty
                 pos["cost"] = pos.get("cost", 0.0) + order_amount
                 pos["bear_streak"] = 0
+                pos["last_price"] = price
+                new_buys += 1
                 cash -= order_amount
                 positions[sym] = pos
                 trades.append({
@@ -3122,6 +3341,8 @@ def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datet
         for sym, pos in positions.items():
             r = by_symbol.get(sym)
             price = r.get("price") if r else None
+            if not price:
+                price = _latest_price_for(sym, history, pos)
             qty = pos.get("qty", 0.0)
             cost = pos.get("cost", 0.0)
             mv = qty * price if price else None
@@ -3202,7 +3423,8 @@ def run_simulation(day_list, long_list, major_list, holdings_list, run_dt: datet
         print(f"[info] simulation更新: 保有{len(position_rows)}銘柄 / 現金${cash:.2f} / "
               f"総資産${total_equity:.2f} / 総損益 ${total_pl:.2f}"
               + (f" ({equity_pl_pct:.1f}%)" if equity_pl_pct is not None else "")
-              + (f" / 資金不足で見送り{held_no_cash_skips}件" if held_no_cash_skips else ""))
+              + (f" / 資金不足で見送り{held_no_cash_skips}件" if held_no_cash_skips else "")
+              + (f" / 過熱・不安定で買い見送り{unsafe_buy_skips}件" if unsafe_buy_skips else ""))
     except Exception as e:
         print(f"[warn] simulation更新に失敗しました: {e}")
         traceback.print_exc()
@@ -3569,7 +3791,7 @@ def main():
         update_learning_state(run_dt)
 
         # 売買シミュレーション(予想に従った仮想売買)を1ステップ進める
-        run_simulation(day_list, long_list, major_list, holdings_list, run_dt)
+        run_simulation(day_list, long_list, major_list, holdings_list, run_dt, history=history)
 
         # 強化学習モデルの再学習(実際の売買損益を報酬として、次回予想の精度向上に反映)
         update_ml_learning_state(run_dt)
