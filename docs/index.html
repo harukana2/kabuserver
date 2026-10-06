@@ -109,7 +109,22 @@
     background:var(--accent); color:#fff; border:none;
     padding:8px 16px; border-radius:8px; font-size:13px; cursor:pointer;
   }
-  #analysisChart{width:100%; height:260px; display:block; background:var(--card); border:1px solid var(--line); border-radius:12px;}
+  #analysisChart{width:100%; height:320px; display:block; background:var(--card); border:1px solid var(--line); border-radius:12px;}
+
+  .fc-box{margin-top:12px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px;}
+  .fc-head{font-weight:700; font-size:14px;}
+  .fc-sub{font-size:11.5px; color:var(--muted); margin:4px 0 8px; line-height:1.55;}
+  .fc-row{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;}
+  .fc-btn{background:#fff; border:1px solid var(--line); border-left:4px solid var(--c,#999); border-radius:8px;
+    padding:5px 9px; font-size:12px; cursor:pointer; color:var(--text); font-family:inherit;}
+  .fc-btn.on{background:var(--chip-bg); font-weight:700; box-shadow:inset 0 0 0 1px var(--c,#999);}
+  .fc-btn[disabled]{opacity:.45; cursor:default;}
+  .fc-btn .e{margin-left:6px; font-size:11px; font-weight:400; color:var(--muted);}
+  .fc-btn .e.pos{color:#188038;} .fc-btn .e.neg{color:#c5221f;}
+  .fc-btn .star{color:#e8710a; margin-left:3px;}
+  .fc-grid{display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;}
+  .fc-grid .fc-btn{font-size:11.5px; padding:4px 8px;}
+  .fc-act{background:none; border:none; color:var(--accent); font-size:12px; cursor:pointer; padding:2px 4px;}
   .analysis-title{font-size:15px; font-weight:700; margin:16px 0 8px;}
   .stat-row{
     display:flex; flex-wrap:wrap; gap:6px 8px; margin-top:10px;
@@ -347,8 +362,11 @@
     <canvas id="analysisChart"></canvas>
     <div class="legend">
       <span><i style="border-color:#1a73e8;"></i>実績の推移</span>
-      <span><i style="border-color:#e8710a;border-top-style:dashed;"></i>予測推移(想定リターンに基づく目安)</span>
+      <span><i style="border-color:#e8710a;border-top-style:dashed;"></i>基本の予測線(従来線)</span>
+      <span><i style="border-color:#9aa0a6;"></i>32パターンの各経路(細線)</span>
+      <span><i style="border-color:#7b1fa2;"></i>合成線(下のボタンで切替)</span>
     </div>
+    <div id="forecastPanel"></div>
     <div id="analysisSummary"></div>
     <div class="analysis-title">過去の予想と的中判定</div>
     <div id="analysisPredictions"></div>
@@ -1584,13 +1602,18 @@ async function runAnalysis(sym, scale){
   const lastPrice = points.length ? points[points.length-1].price : (row ? row.price : null);
   let forecast = [];
   let expPct = null;
+  lastAnalysisCtx = null;
   if(showForecast && row && lastPrice){
     expPct = estimateExpectedReturn(row, kind);
-    const steps = Math.max(4, Math.round(points.length * 0.4)) || 8;
-    forecast = buildProjection(lastPrice, expPct, steps).slice(1).map(p => ({price:p.value}));
+    if(expPct != null){
+      forecast = buildProjection(lastPrice, expPct, FC_STEPS).slice(1).map(p => ({price:p.value}));
+      const model = buildForecastModel(points, sym, row, kind, lastPrice, expPct);
+      lastAnalysisCtx = {points, sym, forecast, model};
+    }
   }
 
-  drawAnalysisChart(points, sym, forecast);
+  if(lastAnalysisCtx) paintAnalysis();
+  else { drawAnalysisChart(points, sym, [], null); renderForecastPanel(); }
   renderAnalysisSummary(sym, row, kind, expPct, lastPrice, forecast);
   renderAnalysisSymbolList();
 
@@ -1623,11 +1646,254 @@ function renderAnalysisSummary(sym, row, kind, expPct, lastPrice, forecast){
     </div>`;
 }
 
-function drawAnalysisChart(points, sym, forecast){
+// ==========================================================================
+// 予測パターン(32種)と、その合成
+//   pct(t) = 想定リターン × d(t) + w(t)
+//   d(t): 目標へどう近づくか(0→1)   w(t): 値幅(ATR)に比例する上下のブレ(両端で0)
+// ほとんどのパターンは同じ想定到達値へ向かい、「経路の違い」だけを表すシナリオです。
+// (#32 のみ目標を割り引く平均回帰型)。確率ではなく目安です。
+// ==========================================================================
+const FC_STEPS = 24;
+let lastAnalysisCtx = null;
+const fcState = {
+  patterns: true,
+  combos: {mean:true, top:true, bull:false, bear:false, sel:true},
+  selected: new Set(),
+};
+
+const _sstep = x => { x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); };
+const _earlyBump = t => 6.75*t*(1-t)*(1-t);
+const _lateBump  = t => 6.75*t*t*(1-t);
+const _tri = t => 1 - Math.abs(2*t - 1);
+const _dbl = t => (1 - Math.cos(4*Math.PI*t))/2;
+function _kf(pts){
+  return t => {
+    if(t <= pts[0][0]) return pts[0][1];
+    for(let i=1;i<pts.length;i++){
+      if(t <= pts[i][0]){
+        const [t0,v0] = pts[i-1], [t1,v1] = pts[i];
+        const u = (t-t0)/(t1-t0);
+        return v0 + (v1-v0)*(1-Math.cos(Math.PI*u))/2;
+      }
+    }
+    return pts[pts.length-1][1];
+  };
+}
+function _hashStr(str){
+  let h = 2166136261 >>> 0;
+  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h >>> 0;
+}
+function _mulberry32(a){
+  return function(){
+    let t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+// ブラウン橋(両端が0に戻るランダム経路)。銘柄ごとに固定シードなので毎回同じ形になる。
+function _makeBridge(n, S, seed){
+  const rnd = _mulberry32(seed);
+  const gauss = () => Math.sqrt(-2*Math.log(Math.max(1e-9, rnd()))) * Math.cos(2*Math.PI*rnd());
+  const sigma = S / Math.sqrt(n);
+  const W = [0];
+  for(let i=1;i<=n;i++) W.push(W[i-1] + gauss()*sigma);
+  return W.map((w,i) => w - (i/n)*W[n]);
+}
+
+const FORECAST_PATTERNS = [
+  {id:1,  name:"直線",                 d:t=>t},
+  {id:2,  name:"加速",                 d:t=>Math.pow(t,2.2)},
+  {id:3,  name:"序盤強→鈍化",          d:t=>1-Math.pow(1-t,2.2)},
+  {id:4,  name:"S字",                  d:_sstep},
+  {id:5,  name:"初動急伸→横ばい",      d:t=>(1-Math.exp(-5*t))/(1-Math.exp(-5))},
+  {id:6,  name:"終盤加速",             d:t=>(Math.exp(4*t)-1)/(Math.exp(4)-1)},
+  {id:7,  name:"階段(2段)",           d:t=>0.5*_sstep((t-0.15)/0.25)+0.5*_sstep((t-0.6)/0.25)},
+  {id:8,  name:"途中で踊り場",         d:_kf([[0,0],[0.3,0.4],[0.7,0.48],[1,1]])},
+  {id:9,  name:"行き過ぎ→収束",        d:_sstep, w:(t,c)=>c.sgn*0.7*c.S*_lateBump(t)},
+  {id:10, name:"一旦逆行→到達",        d:t=>t,   w:(t,c)=>-c.sgn*0.8*c.S*_earlyBump(t)},
+  {id:11, name:"先行→調整→到達",       d:t=>t,   w:(t,c)=> c.sgn*0.8*c.S*_earlyBump(t)},
+  {id:12, name:"V字(逆行→到達)",      d:t=>t,   w:(t,c)=>-c.sgn*c.S*_tri(t)},
+  {id:13, name:"逆V(先行→反落→到達)", d:t=>t,   w:(t,c)=> c.sgn*c.S*_tri(t)},
+  {id:14, name:"W字(二度逆行)",       d:t=>t,   w:(t,c)=>-c.sgn*0.8*c.S*_dbl(t)},
+  {id:15, name:"M字(二度先行)",       d:t=>t,   w:(t,c)=> c.sgn*0.8*c.S*_dbl(t)},
+  {id:16, name:"ウェーブ1周",          d:t=>t,   w:(t,c)=> 0.7*c.S*Math.sin(2*Math.PI*t)},
+  {id:17, name:"ウェーブ2周",          d:t=>t,   w:(t,c)=> 0.6*c.S*Math.sin(4*Math.PI*t)},
+  {id:18, name:"逆位相ウェーブ",       d:t=>t,   w:(t,c)=>-0.7*c.S*Math.sin(2*Math.PI*t)},
+  {id:19, name:"減衰振動(収束)",      d:t=>t,   w:(t,c)=> 0.9*c.S*Math.exp(-3*t)*Math.sin(4*Math.PI*t)},
+  {id:20, name:"拡大振動(発散)",      d:t=>t,   w:(t,c)=> 0.8*c.S*t*Math.sin(5*Math.PI*t)},
+  {id:21, name:"ジグザグ",             d:t=>t,   w:(t,c)=> 0.6*c.S*(2/Math.PI)*Math.asin(Math.sin(6*Math.PI*t))},
+  {id:22, name:"ランダム経路A",        d:t=>t,   w:(t,c,i)=>c.bridgeA[i]},
+  {id:23, name:"ランダム経路B",        d:t=>t,   w:(t,c,i)=>c.bridgeB[i]},
+  {id:24, name:"目標超過→戻り",        d:t=>t+0.6*_lateBump(t)},
+  {id:25, name:"初動逆行(目標比例)",  d:t=>t-0.5*_earlyBump(t)},
+  {id:26, name:"ギャップ→失速",        d:t=>1.3*(1-Math.exp(-12*t))/(1-Math.exp(-12))-0.3*t},
+  {id:27, name:"レンジ→ブレイク",      d:t=>t<0.65 ? 0.05*t/0.65 : 0.05+0.95*_sstep((t-0.65)/0.35)},
+  {id:28, name:"ブレイク→リテスト",    d:_kf([[0,0],[0.4,1.1],[0.7,0.85],[1,1]])},
+  {id:29, name:"反発→再加速",          d:_kf([[0,0],[0.3,0.5],[0.5,0.3],[1,1]])},
+  {id:30, name:"レンジ往復→終盤動く",  d:_kf([[0,0],[0.8,0.1],[1,1]]), w:(t,c)=>0.5*c.S*Math.sin(3*Math.PI*t)},
+  {id:31, name:"三角保ち合い",         d:_sstep, w:(t,c)=>0.8*c.S*(1-t)*Math.sin(6*Math.PI*t)},
+  {id:32, name:"平均回帰(目標を割引)",d:t=>0.2*t, w:(t,c)=>c.sgn*0.6*c.S*Math.sin(Math.PI*t)},
+];
+FORECAST_PATTERNS.forEach(p => { p.color = `hsl(${Math.round((p.id*137.5)%360)},65%,42%)`; });
+
+const COMBO_DEFS = [
+  {key:"mean", name:"全32平均",         short:"平均",  color:"#7b1fa2", width:2.5},
+  {key:"top",  name:"適合上位5の平均",  short:"上位5", color:"#00897b", width:2.5},
+  {key:"bull", name:"楽観(上位25%点)", short:"楽観",  color:"#d81b60", width:2, dash:[2,3]},
+  {key:"bear", name:"悲観(下位25%点)", short:"悲観",  color:"#3949ab", width:2, dash:[2,3]},
+  {key:"sel",  name:"選択パターンの合成",short:"選択",  color:"#202124", width:3},
+];
+
+// 各パターンの経路(%)を作る。exp = 終点の想定リターン(%)
+function _patternPaths(exp, S, n, seed){
+  const c = {n, S, sgn: exp >= 0 ? 1 : -1,
+             bridgeA: _makeBridge(n, S, seed), bridgeB: _makeBridge(n, S, (seed ^ 0x9e3779b9) >>> 0)};
+  return FORECAST_PATTERNS.map(p => {
+    const arr = [];
+    for(let i=0;i<=n;i++){
+      const t = i/n;
+      arr.push(exp*p.d(t) + (p.w ? p.w(t,c,i) : 0));
+    }
+    return arr;
+  });
+}
+
+function buildForecastModel(points, sym, row, kind, lastPrice, expPct){
+  const n = FC_STEPS;
+  const atr = Math.min(12, Math.max(0.8, row.atr_pct ?? 2));
+  const S = atr * (kind === "day" ? 1.0 : 2.0);   // ブレ幅の基準(%)
+  const seed = _hashStr(sym + "|" + kind);
+
+  const paths = _patternPaths(expPct, S, n, seed);
+  const patterns = FORECAST_PATTERNS.map((p, k) => ({
+    id:p.id, name:p.name, color:p.color,
+    pct: paths[k],
+    prices: paths[k].map(v => lastPrice*(1+v/100)),
+    fitRank: null, fitErr: null,
+  }));
+
+  // 当てはめ: 直近の実績(点が3つ以上あるとき)を同じ24区間にならし、
+  // 「実績の騰落率を終点とした各パターン」との誤差が小さい順に順位を付ける。
+  if(points.length >= 3){
+    const L = points.length, a0 = points[0].price;
+    const act = [];
+    for(let j=0;j<=n;j++){
+      const pos = j/n*(L-1), lo = Math.floor(pos), hi = Math.min(L-1, lo+1);
+      const v = points[lo].price + (points[hi].price - points[lo].price)*(pos-lo);
+      act.push((v/a0 - 1)*100);
+    }
+    const recent = _patternPaths(act[n], S, n, seed);
+    const errs = recent.map(arr => Math.sqrt(arr.reduce((s,v,i) => s + (v-act[i])**2, 0)/(n+1)));
+    errs.map((e,k) => ({e,k})).sort((x,y) => x.e - y.e).forEach((o, rank) => {
+      patterns[o.k].fitRank = rank+1;
+      patterns[o.k].fitErr = o.e;
+    });
+  }
+  return {patterns, lastPrice, S};
+}
+
+function _quantile(arr, q){
+  const s = arr.slice().sort((a,b) => a-b);
+  const pos = (s.length-1)*q, lo = Math.floor(pos), hi = Math.ceil(pos);
+  return s[lo] + (s[hi]-s[lo])*(pos-lo);
+}
+function computeCombos(model){
+  const n = FC_STEPS, P = model.patterns;
+  const avg = list => list.length ? Array.from({length:n+1}, (_,i) => list.reduce((s,p) => s + p.prices[i], 0)/list.length) : null;
+  const quant = q => Array.from({length:n+1}, (_,i) => _quantile(P.map(p => p.prices[i]), q));
+  const map = {
+    mean: avg(P),
+    top:  avg(P.filter(p => p.fitRank != null && p.fitRank <= 5)),
+    bull: quant(0.75),
+    bear: quant(0.25),
+    sel:  avg(P.filter(p => fcState.selected.has(p.id))),
+  };
+  return COMBO_DEFS.map(d => ({...d, prices: map[d.key], enabled: !!fcState.combos[d.key]}));
+}
+
+function paintAnalysis(){
+  const c = lastAnalysisCtx;
+  if(!c) return;
+  drawAnalysisChart(c.points, c.sym, c.forecast, c.model);
+  renderForecastPanel();
+}
+
+function renderForecastPanel(){
+  const el = document.getElementById("forecastPanel");
+  if(!el) return;
+  const c = lastAnalysisCtx;
+  if(!c || !c.model){ el.innerHTML = ""; return; }
+  const m = c.model, n = FC_STEPS, base = m.lastPrice;
+  const endPct = prices => (prices[n]/base - 1)*100;
+  const fmtE = v => `<span class="e ${v>=0?"pos":"neg"}">${v>=0?"+":""}${v.toFixed(1)}%</span>`;
+  const combos = computeCombos(m);
+  const ends = m.patterns.map(p => p.pct[n]);
+  const lo = Math.min(...ends), hi = Math.max(...ends);
+  const hasFit = m.patterns.some(p => p.fitRank != null);
+
+  const comboBtns = combos.map(cb => {
+    const dis = !cb.prices;
+    const label = cb.key === "sel" ? `${cb.name}(${fcState.selected.size})` : cb.name;
+    return `<button type="button" class="fc-btn ${cb.enabled && !dis ? "on":""}" data-fc="combo" data-key="${cb.key}"
+      style="--c:${cb.color}" ${dis?"disabled":""}>${label}${dis ? `<span class="e">${cb.key==="sel"?"(下で選択)":"(算出不可)"}</span>` : fmtE(endPct(cb.prices))}</button>`;
+  }).join("");
+
+  const patBtns = m.patterns.map(p => {
+    const star = (p.fitRank != null && p.fitRank <= 5) ? `<span class="star" title="直近の値動きに近い上位5">★${p.fitRank}</span>` : "";
+    return `<button type="button" class="fc-btn ${fcState.selected.has(p.id)?"on":""}" data-fc="pat" data-id="${p.id}"
+      style="--c:${p.color}">${p.id}. ${p.name}${fmtE(p.pct[n])}${star}</button>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="fc-box">
+      <div class="fc-head">予測パターン32種 と 合成</div>
+      <div class="fc-sub">
+        同じ想定リターンへ向かう「経路の違い」(押し目・V字・ブレイク・ウェーブ等)を32通り描いたシナリオです。確率ではありません。
+        ${hasFit ? "★は直近の値動きに形が近い上位5パターン(当てはまり順)。" : "実績の点が少ないため当てはまり順は算出していません。"}
+        32パターンの終点レンジ: ${lo>=0?"+":""}${lo.toFixed(1)}% 〜 ${hi>=0?"+":""}${hi.toFixed(1)}%
+      </div>
+      <div class="fc-row">
+        <button type="button" class="fc-btn ${fcState.patterns?"on":""}" data-fc="patterns" style="--c:#9aa0a6">32パターンの線を表示</button>
+        ${comboBtns}
+      </div>
+      <div class="fc-sub" style="margin:8px 0 0;">パターンをタップして選ぶと、その線が太く表示され「選択パターンの合成」に平均されます。</div>
+      <div class="fc-grid">${patBtns}</div>
+      <div class="fc-row" style="margin-top:8px;">
+        <button type="button" class="fc-act" data-fc="selall">全て選択</button>
+        <button type="button" class="fc-act" data-fc="seltop" ${hasFit?"":"disabled"}>適合上位5を選択</button>
+        <button type="button" class="fc-act" data-fc="selclear">選択解除</button>
+      </div>
+    </div>`;
+}
+
+function onForecastPanelClick(e){
+  const b = e.target.closest("[data-fc]");
+  if(!b || b.disabled || !lastAnalysisCtx) return;
+  const a = b.dataset.fc, P = lastAnalysisCtx.model.patterns;
+  if(a === "combo")         fcState.combos[b.dataset.key] = !fcState.combos[b.dataset.key];
+  else if(a === "patterns") fcState.patterns = !fcState.patterns;
+  else if(a === "pat"){
+    const id = Number(b.dataset.id);
+    if(fcState.selected.has(id)) fcState.selected.delete(id); else fcState.selected.add(id);
+    if(fcState.selected.size) fcState.combos.sel = true;
+  }
+  else if(a === "selall"){ P.forEach(p => fcState.selected.add(p.id)); fcState.combos.sel = true; }
+  else if(a === "seltop"){
+    fcState.selected.clear();
+    P.filter(p => p.fitRank != null && p.fitRank <= 5).forEach(p => fcState.selected.add(p.id));
+    fcState.combos.sel = true;
+  }
+  else if(a === "selclear") fcState.selected.clear();
+  paintAnalysis();
+}
+
+function drawAnalysisChart(points, sym, forecast, model){
   const canvas = document.getElementById("analysisChart");
   const dpr = window.devicePixelRatio || 1;
   const cssW = canvas.clientWidth || 600;
-  const cssH = 260;
+  const cssH = 320;
   canvas.width = cssW * dpr;
   canvas.height = cssH * dpr;
   const ctx = canvas.getContext("2d");
@@ -1642,49 +1908,106 @@ function drawAnalysisChart(points, sym, forecast){
   }
 
   const fc = forecast || [];
+  const hasFc = fc.length > 0;
+  const useModel = hasFc && !!model;
+  const combos = useModel ? computeCombos(model).filter(c => c.enabled && c.prices) : [];
+  const pats = (useModel && fcState.patterns) ? model.patterns : [];
+
   const prices = points.map(p=>p.price).concat(fc.map(p=>p.price));
+  pats.forEach(p => p.prices.forEach(v => prices.push(v)));
+  combos.forEach(c => c.prices.forEach(v => prices.push(v)));
   const min = Math.min(...prices), max = Math.max(...prices);
-  const pad = (max-min)*0.12 || Math.max(min*0.02, 0.5);
+  const pad = (max-min)*0.08 || Math.max(min*0.02, 0.5);
   const yMin = min-pad, yMax = max+pad;
-  const left = 56, right = 16, top = 18, bottom = 28;
+  const left = 56, right = hasFc ? 46 : 16, top = 18, bottom = 28;
   const plotW = cssW - left - right;
   const plotH = cssH - top - bottom;
-  const total = points.length + fc.length;
-  const xStep = total > 1 ? plotW/(total-1) : 0;
-
-  const xAt = i => left + i*xStep;
+  // 実績:予測 = 6:4 の幅で描く(予測区間を細かく見せるため横軸は実績と別スケール)
+  const histW = hasFc ? plotW*0.6 : plotW;
+  const fcW = plotW - histW;
+  const xHist = i => left + i*(histW/(points.length-1));
+  const xFc = j => left + histW + (j/FC_STEPS)*fcW;
   const yAt = v => top + plotH * (1 - (v - yMin)/(yMax - yMin || 1));
+  const lastPrice = points[points.length-1].price;
 
-  // 実績の折れ線
+  // 横のグリッド
+  ctx.strokeStyle = "#eef0f2"; ctx.lineWidth = 1;
+  for(let g=0; g<=4; g++){
+    const y = top + plotH*g/4;
+    ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(cssW-right, y); ctx.stroke();
+  }
+
+  // 予測区間の背景
+  if(hasFc){
+    ctx.fillStyle = "rgba(232,113,10,0.05)";
+    ctx.fillRect(xFc(0), top, fcW, plotH);
+  }
+
+  // 32パターンの細線
+  const anySel = fcState.selected.size > 0;
+  pats.forEach(p => {
+    const sel = fcState.selected.has(p.id);
+    ctx.save();
+    ctx.strokeStyle = p.color;
+    ctx.globalAlpha = sel ? 1 : (anySel ? 0.16 : 0.42);
+    ctx.lineWidth = sel ? 2 : 1;
+    ctx.beginPath();
+    p.prices.forEach((v,j) => { const x=xFc(j), y=yAt(v); j ? ctx.lineTo(x,y) : ctx.moveTo(x,y); });
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  // 現在値の基準線
+  ctx.save();
+  ctx.strokeStyle = "#bdc1c6"; ctx.setLineDash([2,3]); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(left, yAt(lastPrice)); ctx.lineTo(cssW-right, yAt(lastPrice)); ctx.stroke();
+  ctx.restore();
+
+  // 合成線
+  combos.forEach(c => {
+    ctx.save();
+    ctx.strokeStyle = c.color; ctx.lineWidth = c.width;
+    if(c.dash) ctx.setLineDash(c.dash);
+    ctx.beginPath();
+    c.prices.forEach((v,j) => { const x=xFc(j), y=yAt(v); j ? ctx.lineTo(x,y) : ctx.moveTo(x,y); });
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  // 基本の予測線(従来線: オレンジの破線)
+  if(hasFc){
+    ctx.save();
+    ctx.strokeStyle = "#e8710a"; ctx.lineWidth = 2; ctx.setLineDash([5,4]);
+    ctx.beginPath();
+    ctx.moveTo(xFc(0), yAt(lastPrice));
+    fc.forEach((p,i) => ctx.lineTo(xFc(i+1), yAt(p.price)));
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 実績の折れ線(最前面)
   ctx.strokeStyle = "#1a73e8";
   ctx.lineWidth = 2;
   ctx.beginPath();
   points.forEach((p,i) => {
-    const x = xAt(i), y = yAt(p.price);
+    const x = xHist(i), y = yAt(p.price);
     if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
   });
   ctx.stroke();
 
-  // 予測推移(実績の末尾から延長。別色の破線で描く)
-  if(fc.length){
-    const startIdx = points.length - 1;
-    ctx.save();
-    ctx.strokeStyle = "#e8710a";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5,4]);
-    ctx.beginPath();
-    ctx.moveTo(xAt(startIdx), yAt(points[points.length-1].price));
-    fc.forEach((p,i) => ctx.lineTo(xAt(startIdx+1+i), yAt(p.price)));
-    ctx.stroke();
-    ctx.restore();
-    // 予測区間の背景
-    ctx.fillStyle = "rgba(232,113,10,0.06)";
-    ctx.fillRect(xAt(startIdx), top, plotW - (xAt(startIdx)-left), plotH);
-    // 終点ラベル
-    const lastY = yAt(fc[fc.length-1].price);
-    ctx.fillStyle = "#e8710a";
-    ctx.font = "11px sans-serif";
-    ctx.fillText(fmtUsd(fc[fc.length-1].price), Math.min(xAt(total-1)-34, cssW-right-40), Math.max(lastY-6, top+10));
+  // 終点ラベル(重ならないよう縦にずらす)
+  if(hasFc){
+    const labels = [{y:yAt(fc[fc.length-1].price), text:"基本", color:"#e8710a"}];
+    combos.forEach(c => labels.push({y:yAt(c.prices[c.prices.length-1]), text:c.short, color:c.color}));
+    labels.sort((a,b) => a.y - b.y);
+    for(let i=1;i<labels.length;i++) if(labels[i].y - labels[i-1].y < 12) labels[i].y = labels[i-1].y + 12;
+    ctx.font = "bold 10.5px sans-serif";
+    labels.forEach(l => {
+      ctx.fillStyle = l.color;
+      ctx.fillText(l.text, cssW-right+4, Math.min(Math.max(l.y+4, top+8), top+plotH));
+    });
+    ctx.fillStyle = "#e8710a"; ctx.font = "11px sans-serif";
+    ctx.fillText("▶ 予測", xFc(0)+4, top+11);
   }
 
   // 軸ラベル
@@ -1692,10 +2015,10 @@ function drawAnalysisChart(points, sym, forecast){
   ctx.font = "11px sans-serif";
   ctx.fillText(fmtUsd(yMax), 4, top+8);
   ctx.fillText(fmtUsd(yMin), 4, top+plotH);
-  const labelStep = Math.max(1, Math.ceil(points.length/6));
+  const labelStep = Math.max(1, Math.ceil(points.length/(hasFc ? 4 : 6)));
   points.forEach((p,i) => {
     if(i % labelStep === 0 || i === points.length-1){
-      ctx.fillText(p.label, Math.min(xAt(i)-14, cssW-right-30), cssH-8);
+      ctx.fillText(p.label, Math.min(xHist(i)-14, cssW-right-30), cssH-8);
     }
   });
 }
@@ -1888,6 +2211,7 @@ async function init(){
     e.target.textContent = showForecast ? "予測推移を表示" : "予測推移を非表示";
     if(analysisSymbol) runAnalysis(analysisSymbol, analysisScale);
   });
+  document.getElementById("forecastPanel").addEventListener("click", onForecastPanelClick);
   document.getElementById("analysisGoBtn").addEventListener("click", () => {
     runAnalysis(document.getElementById("analysisSymbol").value, analysisScale);
   });
