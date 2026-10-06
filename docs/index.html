@@ -124,6 +124,16 @@
   .fc-btn .star{color:#e8710a; margin-left:3px;}
   .fc-grid{display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;}
   .fc-grid .fc-btn{font-size:11.5px; padding:4px 8px;}
+  .fc-plist{display:flex; flex-direction:column; gap:3px; margin-top:4px;}
+  .fc-prow{display:flex; align-items:center; gap:6px; font-size:11.5px;}
+  .fc-prow .sw{width:10px; height:10px; border-radius:2px; flex:none;}
+  .fc-prow .nm{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .fc-prow .e{font-size:11px; color:var(--muted); flex:none;}
+  .fc-prow .e.pos{color:#188038;} .fc-prow .e.neg{color:#c5221f;}
+  .fc-prow .bar{flex:0 0 22%; height:6px; background:var(--chip-bg); border-radius:3px; overflow:hidden;}
+  .fc-prow .bar i{display:block; height:100%;}
+  .fc-prow .pc{flex:0 0 44px; text-align:right; font-variant-numeric:tabular-nums; font-weight:700;}
+  .fc-more summary{font-size:12px; color:var(--accent); cursor:pointer; margin-top:6px;}
   .fc-act{background:none; border:none; color:var(--accent); font-size:12px; cursor:pointer; padding:2px 4px;}
   .analysis-title{font-size:15px; font-weight:700; margin:16px 0 8px;}
   .stat-row{
@@ -363,8 +373,8 @@
     <div class="legend">
       <span><i style="border-color:#1a73e8;"></i>実績の推移</span>
       <span><i style="border-color:#e8710a;border-top-style:dashed;"></i>基本の予測線(従来線)</span>
-      <span><i style="border-color:#9aa0a6;"></i>32パターンの各経路(細線)</span>
-      <span><i style="border-color:#7b1fa2;"></i>合成線(下のボタンで切替)</span>
+      <span><i style="border-color:#9aa0a6;"></i>32パターンの各経路(濃い線ほど確率が高い)</span>
+      <span><i style="border-color:#7b1fa2;"></i>予測線(確率比で加重平均)</span>
     </div>
     <div id="forecastPanel"></div>
     <div id="analysisSummary"></div>
@@ -1647,7 +1657,7 @@ function renderAnalysisSummary(sym, row, kind, expPct, lastPrice, forecast){
 }
 
 // ==========================================================================
-// 予測パターン(32種)と、その合成
+// 予測パターン(32種)と、確率加重による合成
 //   pct(t) = 想定リターン × d(t) + w(t)
 //   d(t): 目標へどう近づくか(0→1)   w(t): 値幅(ATR)に比例する上下のブレ(両端で0)
 // ほとんどのパターンは同じ想定到達値へ向かい、「経路の違い」だけを表すシナリオです。
@@ -1657,8 +1667,7 @@ const FC_STEPS = 24;
 let lastAnalysisCtx = null;
 const fcState = {
   patterns: true,
-  combos: {mean:true, top:true, bull:false, bear:false, sel:true},
-  selected: new Set(),
+  combos: {prob:true, mean:false, bull:true, bear:true},
 };
 
 const _sstep = x => { x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); };
@@ -1739,11 +1748,10 @@ const FORECAST_PATTERNS = [
 FORECAST_PATTERNS.forEach(p => { p.color = `hsl(${Math.round((p.id*137.5)%360)},65%,42%)`; });
 
 const COMBO_DEFS = [
-  {key:"mean", name:"全32平均",         short:"平均",  color:"#7b1fa2", width:2.5},
-  {key:"top",  name:"適合上位5の平均",  short:"上位5", color:"#00897b", width:2.5},
-  {key:"bull", name:"楽観(上位25%点)", short:"楽観",  color:"#d81b60", width:2, dash:[2,3]},
-  {key:"bear", name:"悲観(下位25%点)", short:"悲観",  color:"#3949ab", width:2, dash:[2,3]},
-  {key:"sel",  name:"選択パターンの合成",short:"選択",  color:"#202124", width:3},
+  {key:"prob", name:"予測線(確率加重)",   short:"予測",  color:"#7b1fa2", width:3},
+  {key:"mean", name:"均等平均(参考)",     short:"均等",  color:"#9aa0a6", width:1.5, dash:[4,3]},
+  {key:"bull", name:"楽観(確率上位25%点)",short:"楽観",  color:"#d81b60", width:2, dash:[2,3]},
+  {key:"bear", name:"悲観(確率下位25%点)",short:"悲観",  color:"#3949ab", width:2, dash:[2,3]},
 ];
 
 // 各パターンの経路(%)を作る。exp = 終点の想定リターン(%)
@@ -1774,8 +1782,14 @@ function buildForecastModel(points, sym, row, kind, lastPrice, expPct){
     fitRank: null, fitErr: null,
   }));
 
-  // 当てはめ: 直近の実績(点が3つ以上あるとき)を同じ24区間にならし、
-  // 「実績の騰落率を終点とした各パターン」との誤差が小さい順に順位を付ける。
+  // 当てはめ → 確率化:
+  //   直近の実績(点が3つ以上)を同じ24区間にならし、「実績の騰落率を終点とした各パターン」との
+  //   RMS誤差 e_k を求める。誤差が小さいほど「今の値動きと同じ形で進んでいそう」とみなし、
+  //     prob_k ∝ exp( -(e_k² - e_min²) / (2σ²) )   (σ = 値幅Sに比例)
+  //   で確率(重み)にする。誤差の差が値幅に比べて小さいパターン同士はほぼ同じ確率になり、
+  //   合成線はその比率で平均される(人が選ぶ必要はない)。
+  const K = patterns.length;
+  let hasFit = false;
   if(points.length >= 3){
     const L = points.length, a0 = points[0].price;
     const act = [];
@@ -1786,30 +1800,43 @@ function buildForecastModel(points, sym, row, kind, lastPrice, expPct){
     }
     const recent = _patternPaths(act[n], S, n, seed);
     const errs = recent.map(arr => Math.sqrt(arr.reduce((s,v,i) => s + (v-act[i])**2, 0)/(n+1)));
-    errs.map((e,k) => ({e,k})).sort((x,y) => x.e - y.e).forEach((o, rank) => {
-      patterns[o.k].fitRank = rank+1;
-      patterns[o.k].fitErr = o.e;
-    });
+    const eMin = Math.min(...errs);
+    const sigma = Math.max(0.35*S, 0.3);
+    const raw = errs.map(e => Math.exp(-(e*e - eMin*eMin)/(2*sigma*sigma)));
+    const tot = raw.reduce((a,b) => a+b, 0);
+    errs.forEach((e,k) => { patterns[k].fitErr = e; patterns[k].prob = raw[k]/tot; });
+    hasFit = true;
+  } else {
+    patterns.forEach(p => { p.prob = 1/K; });   // 実績が少ない間は全パターン均等
   }
-  return {patterns, lastPrice, S};
+  [...patterns].sort((x,y) => y.prob - x.prob).forEach((p,i) => { p.fitRank = hasFit ? i+1 : null; });
+  const neff = 1 / patterns.reduce((s,p) => s + p.prob*p.prob, 0);   // 有効パターン数(1=一択, 32=完全に拮抗)
+  return {patterns, lastPrice, S, hasFit, neff};
 }
 
-function _quantile(arr, q){
-  const s = arr.slice().sort((a,b) => a-b);
-  const pos = (s.length-1)*q, lo = Math.floor(pos), hi = Math.ceil(pos);
-  return s[lo] + (s[hi]-s[lo])*(pos-lo);
+// 確率重み付きの分位点(各時点で、価格の低い順に確率を足していき q を超えた点)
+function _wquantile(vals, w, q){
+  const idx = vals.map((v,i) => i).sort((a,b) => vals[a]-vals[b]);
+  let acc = 0;
+  for(let k=0;k<idx.length;k++){
+    const i = idx[k];
+    const next = acc + w[i];
+    if(next >= q){
+      if(k === 0 || w[i] === 0) return vals[i];
+      const prev = vals[idx[k-1]];
+      const u = (q - acc)/w[i];
+      return prev + (vals[i]-prev)*Math.min(1, Math.max(0, u));
+    }
+    acc = next;
+  }
+  return vals[idx[idx.length-1]];
 }
 function computeCombos(model){
-  const n = FC_STEPS, P = model.patterns;
-  const avg = list => list.length ? Array.from({length:n+1}, (_,i) => list.reduce((s,p) => s + p.prices[i], 0)/list.length) : null;
-  const quant = q => Array.from({length:n+1}, (_,i) => _quantile(P.map(p => p.prices[i]), q));
-  const map = {
-    mean: avg(P),
-    top:  avg(P.filter(p => p.fitRank != null && p.fitRank <= 5)),
-    bull: quant(0.75),
-    bear: quant(0.25),
-    sel:  avg(P.filter(p => fcState.selected.has(p.id))),
-  };
+  const n = FC_STEPS, P = model.patterns, W = P.map(p => p.prob);
+  const wavg = Array.from({length:n+1}, (_,i) => P.reduce((s,p) => s + p.prob*p.prices[i], 0));
+  const mean = Array.from({length:n+1}, (_,i) => P.reduce((s,p) => s + p.prices[i], 0)/P.length);
+  const quant = q => Array.from({length:n+1}, (_,i) => _wquantile(P.map(p => p.prices[i]), W, q));
+  const map = {prob: wavg, mean, bull: quant(0.75), bear: quant(0.25)};
   return COMBO_DEFS.map(d => ({...d, prices: map[d.key], enabled: !!fcState.combos[d.key]}));
 }
 
@@ -1827,65 +1854,57 @@ function renderForecastPanel(){
   if(!c || !c.model){ el.innerHTML = ""; return; }
   const m = c.model, n = FC_STEPS, base = m.lastPrice;
   const endPct = prices => (prices[n]/base - 1)*100;
-  const fmtE = v => `<span class="e ${v>=0?"pos":"neg"}">${v>=0?"+":""}${v.toFixed(1)}%</span>`;
+  const fmtE = v => `<span class="e ${v>=0?"pos":"neg"}">${v>=0?"+":"\u2212"}${Math.abs(v).toFixed(1)}%</span>`;
   const combos = computeCombos(m);
-  const ends = m.patterns.map(p => p.pct[n]);
-  const lo = Math.min(...ends), hi = Math.max(...ends);
-  const hasFit = m.patterns.some(p => p.fitRank != null);
+  const hasFit = m.hasFit;
 
-  const comboBtns = combos.map(cb => {
-    const dis = !cb.prices;
-    const label = cb.key === "sel" ? `${cb.name}(${fcState.selected.size})` : cb.name;
-    return `<button type="button" class="fc-btn ${cb.enabled && !dis ? "on":""}" data-fc="combo" data-key="${cb.key}"
-      style="--c:${cb.color}" ${dis?"disabled":""}>${label}${dis ? `<span class="e">${cb.key==="sel"?"(下で選択)":"(算出不可)"}</span>` : fmtE(endPct(cb.prices))}</button>`;
-  }).join("");
+  const comboBtns = combos.map(cb =>
+    `<button type="button" class="fc-btn ${cb.enabled ? "on":""}" data-fc="combo" data-key="${cb.key}"
+      style="--c:${cb.color}">${cb.name}${fmtE(endPct(cb.prices))}</button>`).join("");
 
-  const patBtns = m.patterns.map(p => {
-    const star = (p.fitRank != null && p.fitRank <= 5) ? `<span class="star" title="直近の値動きに近い上位5">★${p.fitRank}</span>` : "";
-    return `<button type="button" class="fc-btn ${fcState.selected.has(p.id)?"on":""}" data-fc="pat" data-id="${p.id}"
-      style="--c:${p.color}">${p.id}. ${p.name}${fmtE(p.pct[n])}${star}</button>`;
-  }).join("");
+  const sorted = [...m.patterns].sort((a,b) => b.prob - a.prob);
+  const maxP = sorted[0].prob || 1;
+  const row = p => `<div class="fc-prow">
+      <span class="sw" style="background:${p.color}"></span>
+      <span class="nm">${p.id}. ${p.name}</span>
+      ${fmtE(p.pct[n])}
+      <span class="bar"><i style="width:${(p.prob/maxP*100).toFixed(1)}%;background:${p.color}"></i></span>
+      <span class="pc">${(p.prob*100).toFixed(1)}%</span>
+    </div>`;
+  const TOP = 8;
+  const topRows = sorted.slice(0, TOP).map(row).join("");
+  const restRows = sorted.slice(TOP).map(row).join("");
+
+  let verdict;
+  if(!hasFit) verdict = "実績の点が少ないため、全パターンを均等な確率として扱っています(予測線=均等平均)。";
+  else if(m.neff < 3)  verdict = `有効パターン数 ≈ ${m.neff.toFixed(1)}:特定のパターンに絞られています。`;
+  else if(m.neff < 10) verdict = `有効パターン数 ≈ ${m.neff.toFixed(1)}:数パターンが拮抗しているため、その確率比で平均しています。`;
+  else verdict = `有効パターン数 ≈ ${m.neff.toFixed(1)}:多くのパターンが同程度に有り得るため、広く平均した線になっています(形は特定できていません)。`;
 
   el.innerHTML = `
     <div class="fc-box">
-      <div class="fc-head">予測パターン32種 と 合成</div>
+      <div class="fc-head">予測パターン32種 と 確率加重の予測線</div>
       <div class="fc-sub">
-        同じ想定リターンへ向かう「経路の違い」(押し目・V字・ブレイク・ウェーブ等)を32通り描いたシナリオです。確率ではありません。
-        ${hasFit ? "★は直近の値動きに形が近い上位5パターン(当てはまり順)。" : "実績の点が少ないため当てはまり順は算出していません。"}
-        32パターンの終点レンジ: ${lo>=0?"+":""}${lo.toFixed(1)}% 〜 ${hi>=0?"+":""}${hi.toFixed(1)}%
+        直近の値動きの形に近いパターンほど高い確率を自動で割り当て、その確率比で平均した線を「予測線」として表示します(選択操作は不要)。
+        確率は「直近の形との当てはまり」から機械的に求めた目安で、実際の的中確率ではありません。<br>
+        ${verdict}
       </div>
       <div class="fc-row">
-        <button type="button" class="fc-btn ${fcState.patterns?"on":""}" data-fc="patterns" style="--c:#9aa0a6">32パターンの線を表示</button>
+        <button type="button" class="fc-btn ${fcState.patterns?"on":""}" data-fc="patterns" style="--c:#9aa0a6">各パターンの線を表示(濃さ=確率)</button>
         ${comboBtns}
       </div>
-      <div class="fc-sub" style="margin:8px 0 0;">パターンをタップして選ぶと、その線が太く表示され「選択パターンの合成」に平均されます。</div>
-      <div class="fc-grid">${patBtns}</div>
-      <div class="fc-row" style="margin-top:8px;">
-        <button type="button" class="fc-act" data-fc="selall">全て選択</button>
-        <button type="button" class="fc-act" data-fc="seltop" ${hasFit?"":"disabled"}>適合上位5を選択</button>
-        <button type="button" class="fc-act" data-fc="selclear">選択解除</button>
-      </div>
+      <div class="fc-sub" style="margin:8px 0 2px;">確率の高い順(右端の数値が確率)</div>
+      <div class="fc-plist">${topRows}</div>
+      <details class="fc-more"><summary>残り${sorted.length-TOP}パターンを表示</summary><div class="fc-plist">${restRows}</div></details>
     </div>`;
 }
 
 function onForecastPanelClick(e){
   const b = e.target.closest("[data-fc]");
   if(!b || b.disabled || !lastAnalysisCtx) return;
-  const a = b.dataset.fc, P = lastAnalysisCtx.model.patterns;
+  const a = b.dataset.fc;
   if(a === "combo")         fcState.combos[b.dataset.key] = !fcState.combos[b.dataset.key];
   else if(a === "patterns") fcState.patterns = !fcState.patterns;
-  else if(a === "pat"){
-    const id = Number(b.dataset.id);
-    if(fcState.selected.has(id)) fcState.selected.delete(id); else fcState.selected.add(id);
-    if(fcState.selected.size) fcState.combos.sel = true;
-  }
-  else if(a === "selall"){ P.forEach(p => fcState.selected.add(p.id)); fcState.combos.sel = true; }
-  else if(a === "seltop"){
-    fcState.selected.clear();
-    P.filter(p => p.fitRank != null && p.fitRank <= 5).forEach(p => fcState.selected.add(p.id));
-    fcState.combos.sel = true;
-  }
-  else if(a === "selclear") fcState.selected.clear();
   paintAnalysis();
 }
 
@@ -1943,14 +1962,14 @@ function drawAnalysisChart(points, sym, forecast, model){
     ctx.fillRect(xFc(0), top, fcW, plotH);
   }
 
-  // 32パターンの細線
-  const anySel = fcState.selected.size > 0;
-  pats.forEach(p => {
-    const sel = fcState.selected.has(p.id);
+  // 32パターンの線(確率が高いほど濃く・太く)
+  const maxProb = pats.length ? Math.max(...pats.map(p => p.prob)) : 1;
+  pats.slice().sort((x,y) => x.prob - y.prob).forEach(p => {
+    const r = maxProb > 0 ? p.prob / maxProb : 0;
     ctx.save();
     ctx.strokeStyle = p.color;
-    ctx.globalAlpha = sel ? 1 : (anySel ? 0.16 : 0.42);
-    ctx.lineWidth = sel ? 2 : 1;
+    ctx.globalAlpha = 0.10 + 0.80*r;
+    ctx.lineWidth = 0.8 + 1.8*r;
     ctx.beginPath();
     p.prices.forEach((v,j) => { const x=xFc(j), y=yAt(v); j ? ctx.lineTo(x,y) : ctx.moveTo(x,y); });
     ctx.stroke();
