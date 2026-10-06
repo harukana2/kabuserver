@@ -49,7 +49,7 @@ POSITIVE_WORDS = {
     "partnership", "deal", "acquire", "acquires", "acquisition", "milestone",
     "top", "tops", "topping", "positive", "recovery", "recovers", "rebound",
     "rebounds", "resilient", "robust", "accelerate", "accelerates",
-    "upbeat", "momentum", "all-time high", "buy rating", "overweight",
+    "upbeat", "momentum", "overweight",
 }
 
 NEGATIVE_WORDS = {
@@ -65,11 +65,18 @@ NEGATIVE_WORDS = {
     "resignation", "fired", "fires", "concern", "concerns", "concerned",
     "risk", "risks", "risky", "volatile", "volatility", "sell-off",
     "selloff", "crash", "crashes", "crashed", "shortfall", "disappoint",
-    "disappoints", "disappointing", "disappointed", "guidance cut",
+    "disappoints", "disappointing", "disappointed",
     "downturn", "recession", "tariff", "tariffs", "ban", "banned",
-    "halt", "halted", "suspend", "suspended", "sec charges", "subpoena",
-    "underweight", "sell rating", "slowdown", "slows", "slowed",
+    "halt", "halted", "suspend", "suspended", "subpoena",
+    "underweight", "slowdown", "slows", "slowed",
 }
+
+# 複数語フレーズ(トークン列で照合する)。旧版は単語集合に複数語を入れていたため
+# 1語ずつ分割されて永遠に一致しなかった。フレーズは一致したら構成語を消費する
+# (例: "guidance cut" の "cut" を二重に数えない)。
+POSITIVE_PHRASES = {("all-time", "high"), ("buy", "rating")}
+NEGATIVE_PHRASES = {("guidance", "cut"), ("sec", "charges"), ("sell", "rating")}
+_MAX_PHRASE_LEN = 3
 
 # 否定語(直前1〜2語にあると極性を反転させる。簡易的な対応)
 NEGATIONS = {"not", "no", "never", "without", "fails", "failed", "failing"}
@@ -92,14 +99,30 @@ def score_headline(text: str) -> float:
 
     score = 0.0
     hits = 0
-    for i, tok in enumerate(tokens):
+    i = 0
+    while i < len(tokens):
         polarity = 0
-        if tok in POSITIVE_WORDS:
-            polarity = 1
-        elif tok in NEGATIVE_WORDS:
-            polarity = -1
-        else:
-            continue
+        span = 1
+        # 長いフレーズから順に照合
+        for n in range(_MAX_PHRASE_LEN, 1, -1):
+            gram = tuple(tokens[i:i + n])
+            if len(gram) < n:
+                continue
+            if gram in POSITIVE_PHRASES:
+                polarity, span = 1, n
+                break
+            if gram in NEGATIVE_PHRASES:
+                polarity, span = -1, n
+                break
+        if polarity == 0:
+            tok = tokens[i]
+            if tok in POSITIVE_WORDS:
+                polarity = 1
+            elif tok in NEGATIVE_WORDS:
+                polarity = -1
+            else:
+                i += 1
+                continue
 
         # 直前2語以内に否定語があれば反転する(例: "not profitable" → 弱気)
         window = tokens[max(0, i - 2):i]
@@ -108,6 +131,7 @@ def score_headline(text: str) -> float:
 
         score += polarity
         hits += 1
+        i += span
 
     if hits == 0:
         return 0.0
@@ -131,6 +155,8 @@ def _extract_headline_and_time(item: dict):
         if pub_str:
             try:
                 pub_time = datetime.fromisoformat(pub_str.replace("Z", "+00:00"))
+                if pub_time.tzinfo is None:  # tz無しはUTC扱い(aware同士でないと比較でTypeError)
+                    pub_time = pub_time.replace(tzinfo=timezone.utc)
             except Exception:
                 pub_time = None
     if title is None:
@@ -173,6 +199,8 @@ def fetch_and_score_news(yf_ticker, now_utc: datetime = None, lookback_days: int
         news_headlines_sample  : list[str] デバッグ・目視確認用に採用した見出し(最大5件)
     """
     now_utc = now_utc or datetime.now(timezone.utc)
+    if now_utc.tzinfo is None:
+        now_utc = now_utc.replace(tzinfo=timezone.utc)
     cutoff = now_utc - timedelta(days=lookback_days)
 
     out = {
@@ -198,11 +226,12 @@ def fetch_and_score_news(yf_ticker, now_utc: datetime = None, lookback_days: int
     for item in raw_news[:max_items]:
         if not isinstance(item, dict):
             continue
-        title, pub_time = _extract_headline_and_time(item)
-        if not title or not pub_time:
-            continue
-        if pub_time < cutoff:
-            continue
+        try:
+            title, pub_time = _extract_headline_and_time(item)
+            if not title or not pub_time or pub_time < cutoff:
+                continue
+        except Exception:
+            continue  # 1件の壊れたニュースで銘柄全体を落とさない
 
         age_hours = max(0.0, (now_utc - pub_time).total_seconds() / 3600.0)
         # 指数減衰: weight = 0.5 ^ (age_hours / halflife_hours)

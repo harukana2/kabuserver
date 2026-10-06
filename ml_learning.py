@@ -82,7 +82,17 @@ MIN_PICKS_FOR_TRUST = 5
 # 検証データの最低件数(日付をまたいだ確定ラベル)
 MIN_VAL_SAMPLES = 15
 # 検証期間の直前、この日数分は学習に使わない(判定期限が検証期間に食い込む漏れの防止)
-EMBARGO_DAYS = 2
+EMBARGO_DAYS = 2  # kind 不明時のフォールバック
+# 【修正2】エンバーゴは判定期限(day=7日/long=95日)以上にする。
+# 短いと、学習サンプルのラベルが検証期間の値動きを含み、検証成績が甘く出る。
+EMBARGO_DAYS_BY_KIND = {"day": 7, "long": 95}
+# 【修正3】検証に使う日付数の下限。同日の銘柄は同じ地合いに連動するため、
+# 件数ではなく「日数」で最低ラインを決める。
+MIN_VAL_DATES = 5
+# 【修正4】騰落率のクリップ(%)。株式分割などで基準がずれた偽の騰落率が報酬を汚さないように。
+RETURN_CLIP_PCT = {"day": 30.0, "long": 100.0}
+# 【修正4】暫定ラベルに必要な最低の価格点数(週末またぎで実質1営業日だけのラベルを除外)
+MIN_HIST_POINTS = 3
 
 # 直近の build_training_rows の集計(使えた/使えなかった理由別の件数)。
 # 本体スクリプトが rl_status.json に書き出して原因調査に使う。
@@ -97,14 +107,22 @@ except Exception:  # scikit-learn / numpy が入っていない環境でも本�
 
 
 def _isnan(v) -> bool:
-    return v is None or (isinstance(v, float) and math.isnan(v))
+    if v is None:
+        return True
+    if isinstance(v, bool):
+        return False
+    try:
+        return math.isnan(float(v))
+    except Exception:
+        return False
 
 
 def _b(v) -> float:
-    if v is True:
-        return 1.0
-    if v is False:
-        return -1.0
+    # numpy.bool_ も受け付ける(`v is True` だと np.bool_ が 0.0 に化けるため)
+    if v is None or _isnan(v):
+        return 0.0
+    if isinstance(v, bool) or getattr(getattr(v, "dtype", None), "kind", "") == "b":
+        return 1.0 if bool(v) else -1.0
     return 0.0
 
 
@@ -195,6 +213,8 @@ def _actual_return(entry: dict, hist: list, today_str: str):
     )
     if not pts:
         return None, 0.0, "no_history"
+    if len(pts) < MIN_HIST_POINTS:
+        return None, 0.0, "history_short"
     d0, dl, de = _parse_date(made), _parse_date(pts[-1]["date"]), _parse_date(end_str)
     if not d0 or not dl or not de:
         return None, 0.0, "bad_date"
@@ -240,6 +260,10 @@ def build_training_rows(predictions_log: dict, sim_trades: list, load_hist_fn, t
         if reason:
             skip(reason)
             continue
+        clip = RETURN_CLIP_PCT.get(kind, 100.0)
+        if abs(pct) > clip:
+            stats["clipped_returns"] = stats.get("clipped_returns", 0) + 1
+            pct = max(-clip, min(clip, pct))
 
         end_str = e.get("horizon_end") or ""
         if end_str <= today_str and frac >= COMPLETE_FRAC:
@@ -261,6 +285,12 @@ def build_training_rows(predictions_log: dict, sim_trades: list, load_hist_fn, t
     stats["rows"] = len(rows)
     LAST_BUILD_STATS = stats
     return rows
+
+
+def _edge_threshold(category: str) -> float:
+    """行動ごとの最低期待報酬($)。サイズ倍率に比例させ、「少し」と「大きく」で
+    必要な期待リターン(%)が同じになるようにする。"""
+    return MIN_EDGE_USD * SIZE_MULT.get(category, 1.0)
 
 
 def _recency_weight(made_date: str, today_str: str, halflife_days: float) -> float:
@@ -329,8 +359,9 @@ class RewardModel:
             complete_dates = sorted({s[2] for s in samples_sorted if s[3] >= 0.999})
             val_dates = set()
             cutoff_dt = None
-            if len(complete_dates) >= 4:
-                n_vd = max(1, int(round(len(complete_dates) * val_frac)))
+            embargo = EMBARGO_DAYS_BY_KIND.get(key[0], EMBARGO_DAYS)
+            if len(complete_dates) >= MIN_VAL_DATES + 2:
+                n_vd = max(MIN_VAL_DATES, int(round(len(complete_dates) * val_frac)))
                 val_dates = set(complete_dates[-n_vd:])
                 cutoff_dt = _parse_date(min(val_dates))
             train_s, val_s = [], []
@@ -339,10 +370,11 @@ class RewardModel:
                 if cutoff_dt is not None and d is not None:
                     if smp[2] in val_dates and smp[3] >= 0.999:
                         val_s.append(smp)
-                    elif (cutoff_dt - d).days > EMBARGO_DAYS:
+                    elif (cutoff_dt - d).days > embargo:
                         train_s.append(smp)
 
-            if val_dates and len(val_s) >= MIN_VAL_SAMPLES and len(train_s) >= min_samples:
+            if (len(val_dates) >= MIN_VAL_DATES and len(val_s) >= MIN_VAL_SAMPLES
+                    and len(train_s) >= min_samples):
                 X_tr = np.array([s[0] for s in train_s], dtype=float)
                 y_tr = np.array([s[1] for s in train_s], dtype=float)
                 val_model = _new_forest()
@@ -359,7 +391,7 @@ class RewardModel:
 
                 # 実運用と同じ使い方での成績: モデルが「期待報酬 > MIN_EDGE_USD」と
                 # 判断した件を実際に取った場合の平均損益($)。これがプラスでなければ信用しない。
-                picked = pred_val > MIN_EDGE_USD
+                picked = pred_val > _edge_threshold(category)
                 pick_n = int(picked.sum())
                 pick_avg = float(np.mean(y_val[picked])) if pick_n else 0.0
 
@@ -383,6 +415,7 @@ class RewardModel:
                 self.metrics[key] = {"validated": False, "n_train": len(samples_sorted),
                                      "n_val": len(val_s), "n_dates": len(dates),
                                      "n_complete_dates": len(complete_dates),
+                                     "embargo_days": embargo,
                                      "n_train_after_embargo": len(train_s)}
 
             # 本番用モデルは全データ(検証データも含む)で、直近ほど・確定ラベルほど
@@ -470,16 +503,21 @@ def choose_action(model: RewardModel | None, kind: str, feats: list, fallback_ca
         meta["reason"] = "no_validated_action_beats_baseline"
         return fallback_category, meta
 
-    best_cat, best_reward = max(trustworthy.items(), key=lambda kv: kv[1])
-    if best_reward <= MIN_EDGE_USD:
-        # 検証合格の行動がどれも損失見込み → ノーポジション(変動なし)を選ぶ。
-        # 旧挙動(ルール予想に戻す)にしたい場合は、次の行を
-        #   return fallback_category, meta
-        # に置き換える。
+    # 【修正1】「変動なし」は報酬が常に0以下で検証に通りやすく、これだけが合格した場合に
+    # 全銘柄が見送りになっていた。判断は売買系(値上がり/値下がり)の合格行動だけで行い、
+    # 売買系が1つも合格していなければルール予想にフォールバックする。
+    directional = {c: r for c, r in trustworthy.items() if c != "変動なし"}
+    if not directional:
+        meta["reason"] = "no_validated_directional_action"
+        return fallback_category, meta
+
+    best_cat, best_reward = max(directional.items(), key=lambda kv: kv[1])
+    if best_reward <= _edge_threshold(best_cat):
+        # 売買系の合格行動がどれも期待値不足 → ノーポジション(変動なし)。
         meta["source"] = "model_abstain"
         meta["reason"] = "best_expected_reward_below_min_edge"
         return "変動なし", meta
 
     meta["source"] = "model"
-    meta["trustworthy_actions"] = list(trustworthy.keys())
+    meta["trustworthy_actions"] = list(directional.keys())
     return best_cat, meta
