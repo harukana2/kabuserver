@@ -286,6 +286,7 @@ def _finite_float(v):
 _FUND_NUMERIC_KEYS = (
     "target_mean", "market_cap", "per", "pbr", "total_cash", "total_debt",
     "net_cash_ratio", "news_sentiment_score", "news_volume_7d", "news_sentiment_conf",
+    "revenue_growth", "earnings_growth",
 )
 
 
@@ -584,8 +585,9 @@ def analyze_holdings(data_client: DataClient, holdings: list[dict]) -> list[dict
             lt_opp, lt_risk = score_long_term(row, fund)
             long_commentary = build_commentary(row, fund, "long")
             day_commentary = build_commentary(row, fund, "day")
-            day_pred = predict_category(row, "day")
-            long_pred = predict_category(row, "long")
+            row_pred = _with_fund_features(row, fund)
+            day_pred = predict_category(row_pred, "day")
+            long_pred = predict_category(row_pred, "long")
         else:
             dt_opp = dt_risk = lt_opp = lt_risk = None
             note = "テクニカル指標を計算するための十分な価格履歴データが取得できませんでした。"
@@ -1251,6 +1253,8 @@ EMPTY_FUNDAMENTALS = {
     "news_sentiment_score": None,
     "news_volume_7d": None,
     "news_sentiment_conf": None,
+    "revenue_growth": None,    # 直近四半期の売上成長率(前年同期比, %)
+    "earnings_growth": None,   # 直近四半期の利益成長率(前年同期比, %)
 }
 
 
@@ -1313,6 +1317,14 @@ def _fetch_fundamentals_uncached(symbol: str, skip_earnings_lookup: bool) -> dic
     result["pbr"] = _finite_float(info.get("priceToBook"))
     result["total_cash"] = _finite_float(info.get("totalCash"))
     result["total_debt"] = _finite_float(info.get("totalDebt"))
+
+    # 成長率(yfinanceは小数、例: 0.25 = +25%)。表示/スコアは%で扱う。
+    _rg = _finite_float(info.get("revenueGrowth"))
+    _eg = _finite_float(info.get("earningsGrowth"))
+    if _eg is None:
+        _eg = _finite_float(info.get("earningsQuarterlyGrowth"))
+    result["revenue_growth"] = _rg * 100 if _rg is not None else None
+    result["earnings_growth"] = _eg * 100 if _eg is not None else None
 
     # ネットキャッシュ比率 = (現金 - 有利子負債) / 時価総額
     if result["total_cash"] is not None and result["market_cap"]:
@@ -1525,6 +1537,73 @@ def score_long_term(row: dict, fund: dict) -> tuple[float, float]:
         risk += 15
 
     return clamp(opp), clamp(risk)
+
+
+# --------------------------------------------------------------------------
+# 急成長候補(売上・利益の伸びが大きく、トレンドが上向きで、過熱していない銘柄)
+# --------------------------------------------------------------------------
+GROWTH_LIST_SIZE = 15
+GROWTH_MIN_REV_GROWTH = 15.0      # 売上成長率(前年同期比%)の下限
+GROWTH_MIN_EARN_GROWTH = 25.0     # 売上が取れない場合の利益成長率の下限
+GROWTH_MIN_MARKET_CAP = 1_000_000_000  # 極端な超小型株は除外($1B未満)
+GROWTH_MAX_ATR_PCT = 8.0          # 値動きが荒すぎる銘柄は除外
+LAST_GROWTH_LIST: list = []       # run_scan が更新。メール/JSONスナップショットが参照する
+
+
+def score_growth(row: dict, fund: dict) -> tuple[float, bool]:
+    """急成長期待スコア(0〜100)と、候補としての適格性を返す。
+    成長率(売上・利益)を主軸に、トレンド・アナリスト目標・出来高増加・ニュースで加点する。
+    過熱銘柄・超小型株・値動きが荒すぎる銘柄は候補から外す(追っかけ買い防止)。
+    成長率が取得できない銘柄は適格外(成長の根拠がないため)。"""
+    rg = _finite_float(fund.get("revenue_growth"))
+    eg = _finite_float(fund.get("earnings_growth"))
+    mc = _finite_float(fund.get("market_cap"))
+    price = _fnum(row.get("price"))
+    target = _finite_float(fund.get("target_mean"))
+    mom3 = _fnum(row.get("mom_3m"))
+    atr = _fnum(row.get("atr_pct"))
+    vol_trend = _fnum(row.get("vol_trend"))
+
+    score = 0.0
+    if rg is not None:
+        score += min(max(rg, 0.0), 60.0) / 60.0 * 30
+    if eg is not None:
+        score += min(max(eg, 0.0), 100.0) / 100.0 * 15
+    if mom3 is not None:
+        score += min(max(mom3, 0.0), 50.0) / 50.0 * 15
+    if row.get("above_sma50") is True:
+        score += 5
+    if row.get("above_sma200") is True:
+        score += 5
+    if target and price:
+        score += min(max((target - price) / price * 100, 0.0), 50.0) / 50.0 * 10
+    if vol_trend is not None and vol_trend > 1.0:
+        score += min(vol_trend - 1.0, 1.0) * 5
+    ns_score = _finite_float(fund.get("news_sentiment_score")) or 0.0
+    ns_conf = _finite_float(fund.get("news_sentiment_conf")) or 0.0
+    score += max(0.0, ns_score) * ns_conf * 5
+    score = round(clamp(score, 0, 100), 1)
+
+    growth_ok = (
+        (rg is not None and rg >= GROWTH_MIN_REV_GROWTH)
+        or (rg is None and eg is not None and eg >= GROWTH_MIN_EARN_GROWTH)
+    )
+    eligible = bool(
+        growth_ok
+        and row.get("above_sma50") is True
+        and not is_overheated(row)
+        and (mc is None or mc >= GROWTH_MIN_MARKET_CAP)
+        and (atr is None or atr <= GROWTH_MAX_ATR_PCT)
+    )
+    return score, eligible
+
+
+def _with_fund_features(row: dict, fund: dict) -> dict:
+    """予想(predict_category)に渡す行へ、ファンダ由来の入力(時価総額・ニュース感情)を足す。
+    予想ログに保存する特徴量(fund込みの行から作る)と、予想時の特徴量を一致させるために使う。"""
+    extra = {k: fund.get(k) for k in ("market_cap", "news_sentiment_score", "news_sentiment_conf")
+             if k in fund}
+    return {**row, **extra}
 
 
 # --------------------------------------------------------------------------
@@ -2146,7 +2225,10 @@ def run_scan():
         sym = row["symbol"]
         fund = fetch_fundamentals(sym)  # 先読み済みなのでキャッシュから即返る
         row_d = row.to_dict()
-        row_d = {**row_d, **{k: v for k, v in fund.items() if k == "market_cap"}}  # 安定銘柄判定用
+        # 安定銘柄判定用の market_cap と、強化学習の入力になるニュース感情を予想側にも渡す
+        # (渡さないと、学習時は実値・予想時は常に0になり特徴量がずれる)
+        row_d = {**row_d, **{k: v for k, v in fund.items()
+                             if k in ("market_cap", "news_sentiment_score", "news_sentiment_conf")}}
         dt_opp, dt_risk = score_day_trade(row_d)
         lt_opp, lt_risk = score_long_term(row_d, fund)
         day_commentary = build_commentary(row_d, fund, "day")
@@ -2169,6 +2251,8 @@ def run_scan():
             "overheated": is_overheated(row_d),
             "dip_setup": is_dip_setup(row_d),
             "stable_name": is_stable_name(row_d),
+            "growth_score": score_growth(row_d, fund)[0],
+            "growth_eligible": score_growth(row_d, fund)[1],
         })
 
     cand_df = pd.DataFrame(candidates)
@@ -2198,6 +2282,15 @@ def run_scan():
     base_pool = base_pool[~base_pool["symbol"].isin(dip_pool["symbol"])]
     base_top = base_pool.sort_values("long_opportunity", ascending=False).head(MAJOR_LIST_SIZE - len(dip_pool))
     major_list = pd.concat([base_top, dip_pool]).to_dict("records")
+
+    global LAST_GROWTH_LIST
+    LAST_GROWTH_LIST = (
+        cand_df[cand_df["growth_eligible"]]
+        .sort_values("growth_score", ascending=False)
+        .head(GROWTH_LIST_SIZE)
+        .to_dict("records")
+    )
+    print(f"[info] 急成長候補: {len(LAST_GROWTH_LIST)}銘柄")
 
     return day_trade_list, long_term_list, major_list, universe, len(cand_df), history
 
@@ -2269,6 +2362,25 @@ def render_row_long(r):
     </tr>"""
 
 
+def render_row_growth(r):
+    upside = None
+    if r.get("target_mean") and r.get("price"):
+        upside = (r["target_mean"] - r["price"]) / r["price"] * 100
+    return f"""
+    <tr>
+      <td><b>{r['symbol']}</b></td>
+      <td>${fmt_num(r['price'])}</td>
+      <td><b>{fmt_num(r.get('growth_score'), 0)}</b></td>
+      <td>{fmt_pct(r.get('revenue_growth'))}</td>
+      <td>{fmt_pct(r.get('earnings_growth'))}</td>
+      <td>{fmt_pct(r.get('mom_3m'))}</td>
+      <td>{fmt_pct(upside)}</td>
+      <td>{fmt_ratio(r.get('per'))}</td>
+      <td>{r.get('sector') or '—'}</td>
+      <td>{r.get('next_earnings') or '不明'}</td>
+    </tr>"""
+
+
 def render_row_major(r):
     upside = None
     if r.get("target_mean") and r.get("price"):
@@ -2320,6 +2432,7 @@ def render_email_html(day_list, long_list, major_list, universe_size, scanned_si
     long_rows = "".join(render_row_long(r) for r in long_list)
     major_rows = "".join(render_row_major(r) for r in major_list)
     holding_rows = "".join(render_row_holding(r) for r in holdings_list)
+    growth_rows = "".join(render_row_growth(r) for r in LAST_GROWTH_LIST)
 
     if holdings_list:
         total_mv = sum(r.get("market_value") or 0 for r in holdings_list)
@@ -2415,6 +2528,20 @@ def render_email_html(day_list, long_list, major_list, universe_size, scanned_si
         <th>現状</th><th>値動きの見立て</th><th>投資タイミングの目安</th>
       </tr>
       {long_rows}
+    </table>
+
+    <h3 style="margin-top:24px;">急成長候補(売上・利益の伸びが大きく、過熱していない銘柄)</h3>
+    <p style="font-size:12px;color:#666;">
+      直近四半期の売上成長率が高く、50日線の上でトレンドが上向き、かつ過熱していない銘柄を
+      成長スコア順に表示。成長率はyfinance由来で欠損・遅延があります。値動きは荒くなりやすい点にご注意ください。
+    </p>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
+      <tr style="background:#222;color:#fff;">
+        <th>銘柄</th><th>現在値</th><th>成長スコア</th><th>売上成長(前年同期比)</th>
+        <th>利益成長(前年同期比)</th><th>3ヶ月騰落率</th><th>目標株価乖離</th>
+        <th>PER</th><th>セクター</th><th>次回決算</th>
+      </tr>
+      {growth_rows or '<tr><td colspan="10">今回は条件を満たす銘柄がありませんでした</td></tr>'}
     </table>
 
     <p style="margin-top:24px;font-size:12px;color:#666;">
@@ -3692,6 +3819,7 @@ def save_json_snapshot(day_list, long_list, major_list, universe_size, scanned_s
             "day_trade": _clean_records(day_list),
             "long_term": _clean_records(long_list),
             "major": _clean_records(major_list),
+            "growth": _clean_records(list(LAST_GROWTH_LIST)),
             "holdings": _clean_records(holdings_list or []),
             "recommendations": recommendations,
         }
